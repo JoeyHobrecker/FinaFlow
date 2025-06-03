@@ -1,4 +1,4 @@
-# FinaFlow
+# Task Manager
 
 This repository now includes a small Node.js backend used for optional data synchronisation.
 
