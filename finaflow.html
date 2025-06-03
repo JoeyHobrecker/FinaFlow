@@ -1148,10 +1148,26 @@
         // --- Dexie Helper Functions ---
         async function getAllDexie(storeName) { return db.table(storeName).toArray(); }
         async function getDexie(storeName, key) { return db.table(storeName).get(key); }
-        async function addDexie(storeName, item) { return db.table(storeName).add(item); }
-        async function putDexie(storeName, item) { return db.table(storeName).put(item); } 
-        async function deleteDexieItem(storeName, key) { return db.table(storeName).delete(key); }
-        async function clearDexieStore(storeName) { return db.table(storeName).clear(); }
+        async function addDexie(storeName, item) {
+            const result = await db.table(storeName).add(item);
+            if (window.save) window.save();
+            return result;
+        }
+        async function putDexie(storeName, item) {
+            const result = await db.table(storeName).put(item);
+            if (window.save) window.save();
+            return result;
+        }
+        async function deleteDexieItem(storeName, key) {
+            const result = await db.table(storeName).delete(key);
+            if (window.save) window.save();
+            return result;
+        }
+        async function clearDexieStore(storeName) {
+            const result = await db.table(storeName).clear();
+            if (window.save) window.save();
+            return result;
+        }
 
         
         // --- Utility Functions ---
@@ -1215,6 +1231,7 @@
                         await db.table(storeName).bulkPut(dataToSave);
                     }
                 }
+                if (window.save) window.save();
             } catch (error) { console.error(`Error saving to ${storeName}:`, error); showToast(`Error saving to ${storeName}.`, 'error'); }
         }
         async function saveSetting(key, value) { await putDexie(STORES.SETTINGS, { key, value }); }
@@ -2831,6 +2848,7 @@
     const data = await collectFormData();
     await setDoc(docRef, data, { merge:true });
   }
+  window.save = save;
 </script>
 </body>
 </html>
