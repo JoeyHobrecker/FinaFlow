@@ -689,7 +689,7 @@
 <body>
     <div class="app-container">
         <header>
-            <div class="logo-wrapper"><img src="logo.png" alt="Task Manager logo" class="logo-img"><span class="logo-text">Task Manager</span></div>
+            <div class="logo-wrapper"><span class="logo-text">Task Manager</span></div>
             <div class="view-controls">
                 <button id="active-view-btn" class="view-btn active">Active Tasks</button>
                 <button id="waiting-view-btn" class="view-btn">Waiting Tasks</button>
@@ -2777,6 +2777,60 @@
         if (!pinned) closeMenu();
     });
 })();
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDpJc3uaMtkKGw76pAW7pxrXOp2_sM5PK8",
+    authDomain: "finaflow-9bd2e.firebaseapp.com",
+    projectId: "finaflow-9bd2e",
+    storageBucket: "finaflow-9bd2e.appspot.com",
+    messagingSenderId: "295577813119",
+    appId: "1:295577813119:web:b338e152a4d06c137cbf4a"
+  };
+
+  const db  = getFirestore(initializeApp(firebaseConfig));
+  const docRef = doc(db, "state", "main");
+
+  async function collectFormData() {
+    const dexie = window.finaDB;
+    const data = {};
+    if (dexie) {
+      for (const table of dexie.tables) {
+        data[table.name] = await table.toArray();
+      }
+    }
+    return data;
+  }
+
+  async function render(data) {
+    const dexie = window.finaDB;
+    if (!dexie || !data) return;
+    for (const table of dexie.tables) {
+      if (data[table.name]) {
+        await dexie.table(table.name).clear();
+        if (data[table.name].length) {
+          await dexie.table(table.name).bulkPut(data[table.name]);
+        }
+      }
+    }
+    if (typeof window.location !== 'undefined') {
+      window.location.reload();
+    }
+  }
+
+  getDoc(docRef).then(snap => {
+    if (snap.exists()) render(snap.data());
+  });
+
+  onSnapshot(docRef, snap => render(snap.data()));
+
+  export async function save() {
+    const data = await collectFormData();
+    await setDoc(docRef, data, { merge:true });
+  }
 </script>
 </body>
 </html>
