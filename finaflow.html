@@ -1276,9 +1276,15 @@
             if (tokenSetting && tokenSetting.value) return tokenSetting.value;
             const lsToken = localStorage.getItem('authToken');
             if (lsToken) { await saveSetting('authToken', lsToken); return lsToken; }
-            const username = prompt('Username:');
-            const password = prompt('Password:');
+
+            let username = localStorage.getItem('savedUsername');
+            let password = localStorage.getItem('savedPassword');
+            if (!username || !password) {
+                username = prompt('Username:');
+                password = prompt('Password:');
+            }
             if (!username || !password) return null;
+
             const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1288,6 +1294,8 @@
             const data = await res.json();
             await saveSetting('authToken', data.token);
             localStorage.setItem('authToken', data.token);
+            localStorage.setItem('savedUsername', username);
+            localStorage.setItem('savedPassword', password);
             return data.token;
         }
 
