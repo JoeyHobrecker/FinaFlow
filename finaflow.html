@@ -2684,6 +2684,48 @@
             });
             window.finaDB = db;
 
+            window.__collectForCloud = async () => {
+                const dexie = window.finaDB;
+                const data = {};
+                if (dexie) {
+                    for (const table of dexie.tables) {
+                        data[table.name] = await table.toArray();
+                    }
+                }
+                return data;
+            };
+
+            window.__renderFromCloud = async (data) => {
+                const dexie = window.finaDB;
+                if (!dexie || !data) return;
+                for (const table of dexie.tables) {
+                    if (data[table.name]) {
+                        await dexie.table(table.name).clear();
+                        if (data[table.name].length) {
+                            await dexie.table(table.name).bulkPut(data[table.name]);
+                        }
+                    }
+                }
+                await loadDataFromDB();
+                setCurrentView(currentView || "active");
+                if (요소.sortSelect) 요소.sortSelect.value = currentSort || "priority";
+                setProjectsViewMode(projectsViewMode || "grid");
+                if (요소.notesSortSelect) 요소.notesSortSelect.value = notesSort || "date";
+                renderTagFilters();
+                renderProjectFilters();
+                renderManageTags();
+                updateAllTaskPriorities(true);
+                if (currentProjectId && document.getElementById("project-detail").classList.contains("visible")) {
+                    const proj = projects.find(p => p.id === currentProjectId);
+                    if (proj) openProjectDetail(currentProjectId); else setCurrentView("projects");
+                }
+                if (currentConceptId && document.getElementById("concept-detail").classList.contains("visible")) {
+                    const conc = concepts.find(c => c.id === currentConceptId);
+                    if (conc) openConceptDetailView(currentConceptId); else setCurrentView("concepts");
+                }
+            };
+
+
             await loadDataFromDB();
             initializeQuillEditor();
             setupEventListeners();
@@ -2697,6 +2739,7 @@
             renderProjectFilters(); 
             renderManageTags();
             updateAllTaskPriorities(true); 
+            if (window.startFirestoreSync) window.startFirestoreSync();
 
             initAutoBackup(); 
             console.log('Task Manager Initialized.');
@@ -2795,10 +2838,16 @@
     });
 })();
 </script>
+<!-- 🔄 firestore-sync.js  (inline for now) -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+  import { initializeApp, getApps } from
+    "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, onSnapshot
+  } from
+    "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
 
+  /* --- public config (safe in repo) --- */
   const firebaseConfig = {
     apiKey: "AIzaSyDpJc3uaMtkKGw76pAW7pxrXOp2_sM5PK8",
     authDomain: "finaflow-9bd2e.firebaseapp.com",
@@ -2808,67 +2857,22 @@
     appId: "1:295577813119:web:b338e152a4d06c137cbf4a"
   };
 
-  const db  = getFirestore(initializeApp(firebaseConfig));
-  const docRef = doc(db, "state", "main");
+  /* --- lazy bootstrap, called from init() once Dexie is ready --- */
+  export function startFirestoreSync () {
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const ref  = doc(db, "state", "main");
 
-  async function collectFormData() {
-    const dexie = window.finaDB;
-    const data = {};
-    if (dexie) {
-      for (const table of dexie.tables) {
-        data[table.name] = await table.toArray();
-      }
-    }
-    return data;
+    getDoc(ref).then(snap => snap.exists() && window.__renderFromCloud(snap.data()));
+    onSnapshot(ref, snap => window.__renderFromCloud(snap.data()));
+
+    window.pushToCloud = async () => {
+      const data = await window.__collectForCloud();
+      return setDoc(ref, data, { merge:true });
+    };
+    window.save = window.pushToCloud;
   }
-
-  async function render(data) {
-    const dexie = window.finaDB;
-    if (!dexie || !data) return;
-    for (const table of dexie.tables) {
-      if (data[table.name]) {
-        await dexie.table(table.name).clear();
-        if (data[table.name].length) {
-          await dexie.table(table.name).bulkPut(data[table.name]);
-        }
-      }
-    }
-    // Instead of forcing a full page reload (which caused an endless loop
-    // when coupled with the realtime Firestore listener), re-load the local
-    // data and re-render the current view so the UI reflects the updated state
-    // without another refresh.
-    await loadDataFromDB();
-    setCurrentView(currentView || 'active');
-    if (요소.sortSelect) 요소.sortSelect.value = currentSort || 'priority';
-    setProjectsViewMode(projectsViewMode || 'grid');
-    if (요소.notesSortSelect) 요소.notesSortSelect.value = notesSort || 'date';
-    renderTagFilters();
-    renderProjectFilters();
-    renderManageTags();
-    updateAllTaskPriorities(true);
-    renderBasedOnView(currentView);
-
-    if (currentProjectId && document.getElementById('project-detail').classList.contains('visible')) {
-      const proj = projects.find(p => p.id === currentProjectId);
-      if (proj) openProjectDetail(currentProjectId); else setCurrentView('projects');
-    }
-    if (currentConceptId && document.getElementById('concept-detail').classList.contains('visible')) {
-      const conc = concepts.find(c => c.id === currentConceptId);
-      if (conc) openConceptDetailView(currentConceptId); else setCurrentView('concepts');
-    }
-  }
-
-  getDoc(docRef).then(snap => {
-    if (snap.exists()) render(snap.data());
-  });
-
-  onSnapshot(docRef, snap => render(snap.data()));
-
-  export async function save() {
-    const data = await collectFormData();
-    await setDoc(docRef, data, { merge:true });
-  }
-  window.save = save;
+  window.startFirestoreSync = startFirestoreSync;
 </script>
 </body>
 </html>
