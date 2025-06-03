@@ -67,36 +67,6 @@
             box-shadow:var(--shadow-md);
             background-color:var(--accent-color);
         }
-        .login-container {
-            display:flex;
-            flex-direction:column;
-            gap:15px;
-            background-color:var(--secondary-color);
-            padding:25px;
-            border-radius:var(--border-radius-md);
-            width:100%;
-            max-width:300px;
-            margin-bottom:30px;
-        }
-        .login-container input {
-            padding:10px 15px;
-            border-radius:var(--border-radius-sm);
-            border:1px solid var(--accent-color);
-            background-color:var(--primary-color);
-            color:var(--text-color);
-        }
-        .login-container button {
-            padding:10px 15px;
-            border:none;
-            border-radius:var(--border-radius-sm);
-            background-color:var(--accent-color);
-            color:var(--offwhite);
-            cursor:pointer;
-            transition:var(--transition-std);
-        }
-        .login-container button:hover {
-            filter:brightness(1.1);
-        }
         @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
     </style>
 </head>
@@ -105,13 +75,7 @@
         <h1 class="main-title">FinaFlow</h1>
         <p class="sub-title">Management Software</p>
     </header>
-    <div id="login-container" class="login-container">
-        <input type="text" id="username" placeholder="Username">
-        <input type="password" id="password" placeholder="Password">
-        <button id="login-btn">Login</button>
-        <button id="register-btn">Create Account</button>
-    </div>
-    <div id="menu-grid" class="menu-grid" style="display:none;">
+    <div id="menu-grid" class="menu-grid">
         <a href="finaflow.html" class="menu-item">
             <i class="fas fa-stream"></i>
             <span>Task Manager</span>
@@ -137,39 +101,5 @@
             <span>Placeholder 5</span>
         </a>
     </div>
-    <script>
-        const loginContainer = document.getElementById('login-container');
-        const menuGrid = document.getElementById('menu-grid');
-        async function handleAuth(isRegister = false) {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            if (!username || !password) { alert('Enter credentials'); return; }
-            const endpoint = isRegister ? '/api/register' : '/api/login';
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            if (!res.ok) { alert(isRegister ? 'Registration failed' : 'Login failed'); return; }
-            const data = await res.json();
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('savedUsername', username);
-            localStorage.setItem('savedPassword', password);
-            loginContainer.style.display = 'none';
-            menuGrid.style.display = 'grid';
-        }
-        document.getElementById('login-btn').addEventListener('click', () => handleAuth(false));
-        document.getElementById('register-btn').addEventListener('click', () => handleAuth(true));
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedUser = localStorage.getItem('savedUsername');
-            const savedPass = localStorage.getItem('savedPassword');
-            if (savedUser) document.getElementById('username').value = savedUser;
-            if (savedPass) document.getElementById('password').value = savedPass;
-            if (localStorage.getItem('authToken')) {
-                loginContainer.style.display = 'none';
-                menuGrid.style.display = 'grid';
-            }
-        });
-    </script>
 </body>
 </html>
