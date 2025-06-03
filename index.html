@@ -194,6 +194,7 @@
         #new-concept-btn { background-color: #d08770; } /* Nord orange */
         #clear-completed-btn { background-color: var(--danger-color); margin-left: auto; }
         .action-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: var(--shadow-sm); filter: brightness(1.1); }
+        .action-btn:active { transform: scale(0.98); }
 
         /* Quick Task / Concept Areas */
         .quick-task-area, .concept-area {
@@ -312,6 +313,7 @@
             background-color: var(--accent-color); color: var(--offwhite); padding: 9px 15px;
             border-radius: var(--border-radius-sm); font-size: 0.9em; gap: 6px;
         }
+        #add-project-task-btn { background-color: var(--success-color); color: var(--primary-color); }
         .add-project-task-btn:hover, .add-note-btn:hover, .file-upload-label:hover { filter: brightness(1.15); transform: translateY(-2px); }
         
         .project-tasks-list { display: flex; flex-direction: column; gap: 12px; }
@@ -433,8 +435,11 @@
         #quill-editor-inner-container .ql-toolbar { background-color: var(--input-bg-color); border:none; border-bottom: 1px solid var(--border-color); padding: 8px; }
         #quill-editor-inner-container .ql-toolbar .ql-stroke, #quill-editor-inner-container .ql-toolbar .ql-picker-label { color: var(--light-text) !important; stroke: var(--light-text) !important; }
         #quill-editor-inner-container .ql-toolbar .ql-fill { fill: var(--light-text) !important; }
-        #quill-editor-inner-container .ql-container { border: none; font-size: 1em; color: var(--charcoal); flex-grow: 1; overflow-y:auto; } /* Text color for editor area */
-        #quill-editor-inner-container .ql-editor { padding: 15px; line-height: 1.7; min-height:100%;}
+        #quill-editor-inner-container .ql-container { border: none; font-size: 1em; flex-grow: 1; overflow-y:auto; }
+        #quill-editor-inner-container .ql-editor {
+            padding: 15px; line-height: 1.7; min-height:100%;
+            color: var(--charcoal);
+        }
         .note-editor-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background-color: var(--input-bg-color);}
         #save-edited-note-btn, #edit-note-btn-overlay { padding: 9px 16px; border-radius: var(--border-radius-sm); font-size: 0.9em; font-weight: 500; }
         #save-edited-note-btn { background-color: var(--success-color); color: var(--primary-color); }
@@ -461,7 +466,8 @@
         .tasks-list { display: flex; flex-direction: column; gap: 20px; }
         .task-card {
             background-color: var(--secondary-color); border-radius: var(--border-radius-md); padding: 20px;
-            box-shadow: var(--shadow-md); transition: var(--transition-std); position: relative;
+            box-shadow: var(--shadow-md); transition: box-shadow 0.3s ease, transform 0.3s ease;
+            position: relative;
             border-left: 5px solid transparent; /* Default, status will override */
             animation: expandIn 0.3s ease;
         }
@@ -513,9 +519,10 @@
             width: 90%; max-width: 600px;
             border-radius: var(--border-radius-md); box-shadow: var(--shadow-lg);
             max-height: 90vh; display: flex; flex-direction: column;
-            transform: scale(0.95); transition: transform 0.3s ease 0.05s; /* Slight delay for transform */
+            transform: scale(0.95); opacity: 0;
+            transition: transform 0.3s ease 0.05s, opacity 0.3s ease 0.05s; /* Slight delay for transform */
         }
-        .modal.visible .modal-content { transform: scale(1); }
+        .modal.visible .modal-content { transform: scale(1); opacity: 1; animation: expandIn 0.3s ease; }
         .modal-header { padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .modal-header h2 { font-size: 1.4em; }
         .close-modal { font-size: 24px; color: var(--light-text); transition: var(--transition-fast); background:none; border:none; cursor:pointer; }
@@ -1845,7 +1852,6 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) { showToast('Task not found.', 'error'); return; }
 
-            요소.editTaskForm.reset();
             populateProjectSelect(요소.editTaskProjectSelect);
 
             요소.editTaskIdInput.value = task.id;
