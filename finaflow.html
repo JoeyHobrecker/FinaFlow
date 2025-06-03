@@ -176,7 +176,6 @@
         }
         #manual-backup-btn { background-color: var(--lavender); color: var(--primary-color); }
         #restore-backup-btn { background-color: var(--warning-color); color: var(--primary-color); }
-        #sync-btn { background-color: red; }
 
         /* Task Container & Action Toolbar */
         .task-container { display: flex; flex-direction: column; gap: 25px; animation: slideInUp 0.5s ease; }
@@ -742,9 +741,6 @@
                     <button id="restore-backup-btn" class="action-btn">
                         <i class="fas fa-upload"></i> Restore from Backup
                     </button>
-                    <button id="sync-btn" class="action-btn">
-                        <i class="fas fa-sync"></i> Sync
-                    </button>
                     <div id="last-backup-indicator" class="backup-indicator"></div>
                 </div>
             </div>
@@ -1025,7 +1021,6 @@
             manualBackupBtn: document.getElementById('manual-backup-btn'),
             restoreBackupInput: document.getElementById('restore-backup-input'),
             restoreBackupBtn: document.getElementById('restore-backup-btn'),
-            syncBtn: document.getElementById('sync-btn'),
             addTaskBtn: document.getElementById('add-task-btn'),
             quickAddBtn: document.getElementById('quick-add-btn'),
             newProjectBtn: document.getElementById('new-project-btn'),
@@ -1158,49 +1153,6 @@
         async function deleteDexieItem(storeName, key) { return db.table(storeName).delete(key); }
         async function clearDexieStore(storeName) { return db.table(storeName).clear(); }
 
-        // --- API Helper Functions ---
-        async function apiRequest(endpoint, method = 'GET', data) {
-            try {
-                const tokenSetting = await getDexie(STORES.SETTINGS, 'authToken');
-                const token = tokenSetting ? tokenSetting.value : null;
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch(`/api/${endpoint}`, {
-                    method,
-                    headers,
-                    body: data ? JSON.stringify(data) : undefined
-                });
-                if (!res.ok) throw new Error('API request failed');
-                return await res.json();
-            } catch (err) {
-                console.error('API Error:', err);
-                return null;
-            }
-        }
-
-        async function loadDataFromServer() {
-            if (!navigator.onLine) return false;
-            const serverData = await apiRequest('all');
-            if (!serverData) return false;
-            tasks = serverData.tasks || [];
-            projects = serverData.projects || [];
-            notes = serverData.notes || [];
-            await saveData(STORES.TASKS, tasks, false, true);
-            await saveData(STORES.PROJECTS, projects, false, true);
-            await saveData(STORES.NOTES, notes, false, true);
-            return true;
-        }
-
-        async function syncData() {
-            if (!navigator.onLine) { showToast('Offline. Cannot sync.', 'warning'); return; }
-            const token = await ensureAuth();
-            if (!token) return;
-            await saveData(STORES.TASKS, tasks);
-            await saveData(STORES.PROJECTS, projects);
-            await saveData(STORES.NOTES, notes);
-            await loadDataFromServer();
-            showToast('Sync complete', 'success');
-        }
         
         // --- Utility Functions ---
         function formatDate(dateString) {
@@ -1235,7 +1187,6 @@
         // --- Data Loading & Saving ---
        async function loadDataFromDB() {
             try {
-                await loadDataFromServer();
                 [tasks, quickTasks, projects, concepts, notes] = await Promise.all([
                     getAllDexie(STORES.TASKS), getAllDexie(STORES.QUICK_TASKS),
                     getAllDexie(STORES.PROJECTS), getAllDexie(STORES.CONCEPTS), getAllDexie(STORES.NOTES)
@@ -1252,11 +1203,8 @@
                 });
             } catch (error) { console.error('Error loading data:', error); showToast('Error loading data.', 'error'); }
         }
-        async function saveData(storeName, dataToSave, isSingleItem = false, skipServer = false) {
+        async function saveData(storeName, dataToSave, isSingleItem = false) {
             try {
-                if (!skipServer && navigator.onLine) {
-                    await apiRequest(storeName, 'PUT', dataToSave);
-                }
                 if (isSingleItem) {
                     await putDexie(storeName, dataToSave);
                 } else {
@@ -1271,33 +1219,7 @@
         }
         async function saveSetting(key, value) { await putDexie(STORES.SETTINGS, { key, value }); }
 
-        async function ensureAuth() {
-            const tokenSetting = await getDexie(STORES.SETTINGS, 'authToken');
-            if (tokenSetting && tokenSetting.value) return tokenSetting.value;
-            const lsToken = localStorage.getItem('authToken');
-            if (lsToken) { await saveSetting('authToken', lsToken); return lsToken; }
 
-            let username = localStorage.getItem('savedUsername');
-            let password = localStorage.getItem('savedPassword');
-            if (!username || !password) {
-                username = prompt('Username:');
-                password = prompt('Password:');
-            }
-            if (!username || !password) return null;
-
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            if (!res.ok) { showToast('Login failed', 'error'); return null; }
-            const data = await res.json();
-            await saveSetting('authToken', data.token);
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('savedUsername', username);
-            localStorage.setItem('savedPassword', password);
-            return data.token;
-        }
 
         // --- Priority Calculation ---
         function calculatePriority(task) {
@@ -2687,7 +2609,6 @@
             요소.manualBackupBtn.addEventListener('click', performBackup);
             요소.restoreBackupBtn.addEventListener('click', () => 요소.restoreBackupInput.click());
             요소.restoreBackupInput.addEventListener('change', handleRestoreFileSelect);
-            요소.syncBtn.addEventListener('click', syncData);
         }
         function populateProjectSelect(selectElement) {
             const currentValue = selectElement.value;
