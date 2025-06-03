@@ -614,6 +614,74 @@
             .file-item {padding:12px;} .file-icon {font-size:2em;}
         }
 
+        /* Right Pop-out Menu */
+        #side-menu-handle {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 12px;
+            height: 100vh;
+            z-index: 998;
+        }
+        #side-menu {
+            position: fixed;
+            top: 0;
+            right: -230px;
+            width: 230px;
+            height: 100vh;
+            background-color: var(--secondary-color);
+            box-shadow: -2px 0 8px rgba(0,0,0,0.5);
+            padding: 20px;
+            color: var(--offwhite);
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            z-index: 999;
+        }
+        #side-menu.open { right: 0; }
+        #side-menu h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.3em;
+            font-family: 'Poppins', sans-serif;
+        }
+        #side-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px;
+            flex-grow: 1;
+        }
+        #side-menu li { margin-bottom: 10px; }
+        #side-menu a {
+            display: block;
+            background-color: var(--primary-color);
+            color: var(--offwhite);
+            padding: 10px 15px;
+            border-radius: var(--border-radius-sm);
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        #side-menu a:hover { background-color: var(--accent-color); }
+        #side-menu a.active {
+            background-color: var(--success-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        #side-menu a.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        #menu-pin-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--offwhite);
+            border-radius: var(--border-radius-sm);
+            padding: 8px 12px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #menu-pin-btn:hover { background-color: var(--accent-color); }
+
     </style>
 </head>
 <body>
@@ -2612,10 +2680,23 @@
             console.log('FinaFlow Initialized.');
             showToast('Welcome back to FinaFlow!', 'info', 2000);
         }
-        document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', init);
 
-    })();
+})();
     </script>
+
+    <div id="side-menu-handle"></div>
+    <nav id="side-menu">
+        <h2>Fina Finder</h2>
+        <ul>
+            <li><a href="finaflow.html" class="active">Finaflow</a></li>
+            <li><a href="#" class="disabled">Placeholder 1</a></li>
+            <li><a href="#" class="disabled">Placeholder 2</a></li>
+            <li><a href="#" class="disabled">Placeholder 3</a></li>
+            <li><a href="#" class="disabled">Placeholder 4</a></li>
+        </ul>
+        <button id="menu-pin-btn">Pin</button>
+    </nav>
 
 <!-- DEBUG LAYER -->
 <script>
@@ -2669,6 +2750,26 @@
       console.log('[STATE SNAPSHOT]', stateSnapshot);
       return stateSnapshot;
   };
+})();
+</script>
+<script>
+(function(){
+    const menu = document.getElementById('side-menu');
+    const handle = document.getElementById('side-menu-handle');
+    const pinBtn = document.getElementById('menu-pin-btn');
+    let pinned = false;
+
+    const openMenu = () => menu.classList.add('open');
+    const closeMenu = () => { if (!pinned) menu.classList.remove('open'); };
+
+    handle.addEventListener('mouseenter', openMenu);
+    menu.addEventListener('mouseenter', openMenu);
+    menu.addEventListener('mouseleave', closeMenu);
+    pinBtn.addEventListener('click', () => {
+        pinned = !pinned;
+        pinBtn.textContent = pinned ? 'Unpin' : 'Pin';
+        if (!pinned) closeMenu();
+    });
 })();
 </script>
 </body>
