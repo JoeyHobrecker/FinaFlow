@@ -915,25 +915,14 @@
         let projectsViewMode = 'grid';
         let notesSort = 'date';
 
-        const db = new Dexie('finaTaskManager');
+        let db;
         const STORES = {
             TASKS: 'tasks', QUICK_TASKS: 'quickTasks', TAGS: 'tags',
             PROJECTS: 'projects', CONCEPTS: 'concepts', NOTES: 'notes',
             FILES: 'files', SETTINGS: 'settings'
         };
 
-        db.version(3).stores({ 
-            tasks: 'id, projectId, status, *tags, completed, priority, deadline, createdAt',
-            quickTasks: 'id, createdAt',
-            tags: 'tag', 
-            projects: 'id, status, title, deadline, createdAt', 
-            concepts: 'id, createdAt, title, updatedAt', 
-            notes: 'id, projectId, *tags, updatedAt, title, createdAt', 
-            files: 'id, projectId, createdAt', 
-            settings: 'key'
-        });
-        
-        window.finaDB = db;
+        window.finaDB = null;
         let quillEditor;
 
         const 요소 = {
@@ -2579,8 +2568,25 @@
 
         // --- Initialization ---
         async function init() {
+            if (!window.Dexie) {
+                console.error('Dexie library failed to load.');
+                return;
+            }
+            db = new Dexie('finaTaskManager');
+            db.version(3).stores({
+                tasks: 'id, projectId, status, *tags, completed, priority, deadline, createdAt',
+                quickTasks: 'id, createdAt',
+                tags: 'tag',
+                projects: 'id, status, title, deadline, createdAt',
+                concepts: 'id, createdAt, title, updatedAt',
+                notes: 'id, projectId, *tags, updatedAt, title, createdAt',
+                files: 'id, projectId, createdAt',
+                settings: 'key'
+            });
+            window.finaDB = db;
+
             await loadDataFromDB();
-            initializeQuillEditor(); 
+            initializeQuillEditor();
             setupEventListeners();
             
             setCurrentView(currentView || 'active'); 
