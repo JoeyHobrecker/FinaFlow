@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinaFlow - Task & Project Manager</title>
+    <title>Task Manager - Task & Project Manager</title>
     
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -176,6 +176,7 @@
         }
         #manual-backup-btn { background-color: var(--lavender); color: var(--primary-color); }
         #restore-backup-btn { background-color: var(--warning-color); color: var(--primary-color); }
+        #sync-btn { background-color: red; }
 
         /* Task Container & Action Toolbar */
         .task-container { display: flex; flex-direction: column; gap: 25px; animation: slideInUp 0.5s ease; }
@@ -689,7 +690,7 @@
 <body>
     <div class="app-container">
         <header>
-            <div class="logo-wrapper"><img src="logo.png" alt="FinaFlow logo" class="logo-img"><span class="logo-text">FinaFlow</span></div>
+            <div class="logo-wrapper"><img src="logo.png" alt="Task Manager logo" class="logo-img"><span class="logo-text">Task Manager</span></div>
             <div class="view-controls">
                 <button id="active-view-btn" class="view-btn active">Active Tasks</button>
                 <button id="waiting-view-btn" class="view-btn">Waiting Tasks</button>
@@ -1273,6 +1274,8 @@
         async function ensureAuth() {
             const tokenSetting = await getDexie(STORES.SETTINGS, 'authToken');
             if (tokenSetting && tokenSetting.value) return tokenSetting.value;
+            const lsToken = localStorage.getItem('authToken');
+            if (lsToken) { await saveSetting('authToken', lsToken); return lsToken; }
             const username = prompt('Username:');
             const password = prompt('Password:');
             if (!username || !password) return null;
@@ -1284,6 +1287,7 @@
             if (!res.ok) { showToast('Login failed', 'error'); return null; }
             const data = await res.json();
             await saveSetting('authToken', data.token);
+            localStorage.setItem('authToken', data.token);
             return data.token;
         }
 
@@ -2467,7 +2471,7 @@
         async function saveBackupToFileSystem(jsonString) {
             try {
                 const blob = new Blob([jsonString], { type: 'application/json' });
-                const filename = `FinaFlow_Backup_${new Date().toISOString().slice(0,10)}.json`;
+                const filename = `TaskManager_Backup_${new Date().toISOString().slice(0,10)}.json`;
                 if (window.showSaveFilePicker) { 
                     const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'JSON Files', accept: {'application/json': ['.json']} }] });
                     const writable = await handle.createWritable();
@@ -2749,8 +2753,8 @@
             updateAllTaskPriorities(true); 
 
             initAutoBackup(); 
-            console.log('FinaFlow Initialized.');
-            showToast('Welcome back to FinaFlow!', 'info', 2000);
+            console.log('Task Manager Initialized.');
+            showToast('Welcome back to Task Manager!', 'info', 2000);
         }
     document.addEventListener('DOMContentLoaded', init);
 

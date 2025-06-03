@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fina - Management Software</title>
+    <title>FinaFlow - Management Software</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
@@ -67,18 +67,53 @@
             box-shadow:var(--shadow-md);
             background-color:var(--accent-color);
         }
+        .login-container {
+            display:flex;
+            flex-direction:column;
+            gap:15px;
+            background-color:var(--secondary-color);
+            padding:25px;
+            border-radius:var(--border-radius-md);
+            width:100%;
+            max-width:300px;
+            margin-bottom:30px;
+        }
+        .login-container input {
+            padding:10px 15px;
+            border-radius:var(--border-radius-sm);
+            border:1px solid var(--accent-color);
+            background-color:var(--primary-color);
+            color:var(--text-color);
+        }
+        .login-container button {
+            padding:10px 15px;
+            border:none;
+            border-radius:var(--border-radius-sm);
+            background-color:var(--accent-color);
+            color:var(--offwhite);
+            cursor:pointer;
+            transition:var(--transition-std);
+        }
+        .login-container button:hover {
+            filter:brightness(1.1);
+        }
         @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
     </style>
 </head>
 <body>
     <header class="main-header">
-        <h1 class="main-title">Fina</h1>
+        <h1 class="main-title">FinaFlow</h1>
         <p class="sub-title">Management Software</p>
     </header>
-    <div class="menu-grid">
+    <div id="login-container" class="login-container">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-btn">Login / Create Account</button>
+    </div>
+    <div id="menu-grid" class="menu-grid" style="display:none;">
         <a href="finaflow.html" class="menu-item">
             <i class="fas fa-stream"></i>
-            <span>Finaflow</span>
+            <span>Task Manager</span>
         </a>
         <a href="#" class="menu-item">
             <i class="fas fa-box"></i>
@@ -101,5 +136,31 @@
             <span>Placeholder 5</span>
         </a>
     </div>
+    <script>
+        const loginContainer = document.getElementById('login-container');
+        const menuGrid = document.getElementById('menu-grid');
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!username || !password) { alert('Enter credentials'); return; }
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            if (!res.ok) { alert('Login failed'); return; }
+            const data = await res.json();
+            localStorage.setItem('authToken', data.token);
+            loginContainer.style.display = 'none';
+            menuGrid.style.display = 'grid';
+        }
+        document.getElementById('login-btn').addEventListener('click', login);
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('authToken')) {
+                loginContainer.style.display = 'none';
+                menuGrid.style.display = 'grid';
+            }
+        });
+    </script>
 </body>
 </html>
