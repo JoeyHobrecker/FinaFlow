@@ -1,4 +1,4 @@
-# FinaFlow
+# Task Manager
 
 This repository now includes a small Node.js backend used for optional data synchronisation.
 
@@ -35,6 +35,6 @@ Deploy this server to any Node hosting provider (Heroku, AWS, etc.) and set `JWT
 
 ## Frontend Sync
 
-`finaflow.html` now contains helper functions that attempt to sync data with the server when online. A **Sync** button is available in the Data Management section. The authentication token is stored in the `settings` Dexie store for reuse.
+`finaflow.html` (Task Manager) now contains helper functions that attempt to sync data with the server when online. A **Sync** button is available in the Data Management section. The authentication token is stored in the `settings` Dexie store for reuse.
 
 When offline the application continues to use local IndexedDB storage as before.

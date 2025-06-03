@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinaFlow - Task & Project Manager</title>
+    <title>Task Manager - Task & Project Manager</title>
     
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -689,7 +689,7 @@
 <body>
     <div class="app-container">
         <header>
-            <div class="logo-wrapper"><img src="logo.png" alt="FinaFlow logo" class="logo-img"><span class="logo-text">FinaFlow</span></div>
+            <div class="logo-wrapper"><img src="logo.png" alt="Task Manager logo" class="logo-img"><span class="logo-text">Task Manager</span></div>
             <div class="view-controls">
                 <button id="active-view-btn" class="view-btn active">Active Tasks</button>
                 <button id="waiting-view-btn" class="view-btn">Waiting Tasks</button>
@@ -2467,7 +2467,7 @@
         async function saveBackupToFileSystem(jsonString) {
             try {
                 const blob = new Blob([jsonString], { type: 'application/json' });
-                const filename = `FinaFlow_Backup_${new Date().toISOString().slice(0,10)}.json`;
+                const filename = `TaskManager_Backup_${new Date().toISOString().slice(0,10)}.json`;
                 if (window.showSaveFilePicker) { 
                     const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'JSON Files', accept: {'application/json': ['.json']} }] });
                     const writable = await handle.createWritable();
@@ -2749,8 +2749,8 @@
             updateAllTaskPriorities(true); 
 
             initAutoBackup(); 
-            console.log('FinaFlow Initialized.');
-            showToast('Welcome back to FinaFlow!', 'info', 2000);
+            console.log('Task Manager Initialized.');
+            showToast('Welcome back to Task Manager!', 'info', 2000);
         }
     document.addEventListener('DOMContentLoaded', init);
 
@@ -2761,7 +2761,7 @@
     <nav id="side-menu">
         <h2>Fina Finder</h2>
         <ul>
-            <li><a href="finaflow.html" class="active">Finaflow</a></li>
+            <li><a href="finaflow.html" class="active">Task Manager</a></li>
             <li><a href="#" class="disabled">Placeholder 1</a></li>
             <li><a href="#" class="disabled">Placeholder 2</a></li>
             <li><a href="#" class="disabled">Placeholder 3</a></li>

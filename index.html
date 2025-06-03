@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fina - Management Software</title>
+    <title>FinaFlow - Management Software</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
@@ -67,18 +67,41 @@
             box-shadow:var(--shadow-md);
             background-color:var(--accent-color);
         }
+        .auth-container { margin-bottom:40px; }
+        .auth-form { display:none; flex-direction:column; align-items:center; gap:10px; }
+        .auth-form.active { display:flex; }
+        .auth-form input { padding:8px 12px; border-radius:var(--border-radius-sm); border:none; }
+        .auth-form button { padding:8px 16px; border:none; border-radius:var(--border-radius-sm); background-color:var(--accent-color); color:var(--offwhite); cursor:pointer; }
+        .auth-form button:hover { opacity:0.9; }
+        .auth-switch { color:var(--light-text); font-size:0.9rem; cursor:pointer; }
         @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
     </style>
 </head>
 <body>
     <header class="main-header">
-        <h1 class="main-title">Fina</h1>
+        <h1 class="main-title">FinaFlow</h1>
         <p class="sub-title">Management Software</p>
     </header>
+    <div class="auth-container">
+        <div id="login-form" class="auth-form active">
+            <h2>Login</h2>
+            <input id="login-username" placeholder="Username">
+            <input id="login-password" type="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <span class="auth-switch" onclick="showSignup()">Create Account</span>
+        </div>
+        <div id="signup-form" class="auth-form">
+            <h2>Create Account</h2>
+            <input id="signup-username" placeholder="Username">
+            <input id="signup-password" type="password" placeholder="Password">
+            <button onclick="signup()">Create</button>
+            <span class="auth-switch" onclick="showLogin()">Back to Login</span>
+        </div>
+    </div>
     <div class="menu-grid">
         <a href="finaflow.html" class="menu-item">
             <i class="fas fa-stream"></i>
-            <span>Finaflow</span>
+            <span>Task Manager</span>
         </a>
         <a href="#" class="menu-item">
             <i class="fas fa-box"></i>
@@ -101,5 +124,49 @@
             <span>Placeholder 5</span>
         </a>
     </div>
+    <script src="dexie.min.js"></script>
+    <script>
+        const db = new Dexie('fina_db');
+        db.version(1).stores({ settings: '&key' });
+
+        async function saveToken(token) {
+            await db.table('settings').put({ key: 'authToken', value: token });
+        }
+
+        async function sendCreds(u, p) {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            });
+            if (!res.ok) throw new Error('Auth failed');
+            const data = await res.json();
+            await saveToken(data.token);
+            location.href = 'finaflow.html';
+        }
+
+        async function login() {
+            const u = document.getElementById('login-username').value.trim();
+            const p = document.getElementById('login-password').value.trim();
+            if (!u || !p) { alert('Enter credentials'); return; }
+            try { await sendCreds(u, p); } catch { alert('Login failed'); }
+        }
+
+        async function signup() {
+            const u = document.getElementById('signup-username').value.trim();
+            const p = document.getElementById('signup-password').value.trim();
+            if (!u || !p) { alert('Enter credentials'); return; }
+            try { await sendCreds(u, p); } catch { alert('Signup failed'); }
+        }
+
+        function showSignup() {
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('signup-form').classList.add('active');
+        }
+        function showLogin() {
+            document.getElementById('signup-form').classList.remove('active');
+            document.getElementById('login-form').classList.add('active');
+        }
+    </script>
 </body>
 </html>
