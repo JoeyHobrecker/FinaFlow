@@ -22,7 +22,9 @@ The server uses `lowdb` so data is persisted to `server/db.json`.
 
 ### Authentication
 
-`POST /api/login` accepts `{username, password}`. If the user does not exist it is created automatically. The response contains a JWT token which must be sent in the `Authorization` header for other API calls.
+`POST /api/register` accepts `{username, password}` and creates a new user. It returns a JWT token.
+
+`POST /api/login` accepts `{username, password}` for existing users. The response contains a JWT token which must be sent in the `Authorization` header for other API calls.
 
 ### Data Endpoints
 
@@ -38,3 +40,5 @@ Deploy this server to any Node hosting provider (Heroku, AWS, etc.) and set `JWT
 `finaflow.html` now contains helper functions that attempt to sync data with the server when online. A **Sync** button is available in the Data Management section. The authentication token is stored in the `settings` Dexie store for reuse.
 
 When offline the application continues to use local IndexedDB storage as before.
+
+The login screen remembers the last used username and password in `localStorage` so returning users can sign in without re-entering credentials.

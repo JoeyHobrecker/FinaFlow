@@ -32,15 +32,22 @@ function auth(req, res, next) {
   }
 }
 
+app.post('/api/register', async (req, res) => {
+  const { username, password } = req.body;
+  await db.read();
+  const existing = db.data.users.find(u => u.username === username);
+  if (existing) return res.status(409).json({ error: 'User exists' });
+  const user = { id: nanoid(), username, password, tasks: [], projects: [], notes: [] };
+  db.data.users.push(user);
+  await db.write();
+  res.json({ token: createToken(user.id) });
+});
+
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   await db.read();
-  let user = db.data.users.find(u => u.username === username);
-  if (!user) {
-    user = { id: nanoid(), username, password, tasks: [], projects: [], notes: [] };
-    db.data.users.push(user);
-    await db.write();
-  }
+  const user = db.data.users.find(u => u.username === username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.password !== password) return res.status(401).json({ error: 'Invalid credentials' });
   res.json({ token: createToken(user.id) });
 });
