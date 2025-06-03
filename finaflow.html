@@ -167,15 +167,6 @@
         .manage-item:hover { transform: translateX(4px); background-color: var(--secondary-color); border-color: var(--accent-color); }
         .manage-item-remove { background: none; border: none; color: var(--danger-color); font-size: 14px; opacity: 0.8; transition: var(--transition-fast); }
         .manage-item-remove:hover { opacity: 1; transform: scale(1.1); }
-        .backup-indicator { margin-top: 20px; padding: 10px; background-color: rgba(var(--sapphire-rgb), 0.1); border-radius: var(--border-radius-sm); font-size: 12px; text-align: center; color: var(--light-text); border: 1px solid rgba(var(--sapphire-rgb), 0.2); }
-        #last-backup-indicator:empty::before { content: "No backup yet"; opacity: 0.7; }
-        #last-backup-indicator:not(:empty)::before { content: "Last Backup: "; opacity: 0.7; }
-        .manage-section .action-btn { /* For backup/restore buttons */
-            width: 100%; margin-bottom: 10px; justify-content: center;
-            font-size: 14px; padding: 10px 15px;
-        }
-        #manual-backup-btn { background-color: var(--lavender); color: var(--primary-color); }
-        #restore-backup-btn { background-color: var(--warning-color); color: var(--primary-color); }
 
         /* Task Container & Action Toolbar */
         .task-container { display: flex; flex-direction: column; gap: 25px; animation: slideInUp 0.5s ease; }
@@ -732,17 +723,6 @@
                         <div class="empty-state hidden"><p>No tags to manage.</p></div>
                     </div>
                 </div>
-                <div class="manage-section">
-                    <h3>Data Management</h3>
-                    <button id="manual-backup-btn" class="action-btn">
-                        <i class="fas fa-download"></i> Create Backup
-                    </button>
-                    <input type="file" id="restore-backup-input" accept=".json" style="display:none;">
-                    <button id="restore-backup-btn" class="action-btn">
-                        <i class="fas fa-upload"></i> Restore from Backup
-                    </button>
-                    <div id="last-backup-indicator" class="backup-indicator"></div>
-                </div>
             </div>
 
             <div class="task-container"> 
@@ -1017,10 +997,6 @@
             tagFiltersContainer: document.getElementById('tag-filters'),
             projectFiltersContainer: document.getElementById('project-filters'),
             manageTagsContainer: document.getElementById('manage-tags'),
-            lastBackupIndicator: document.getElementById('last-backup-indicator'),
-            manualBackupBtn: document.getElementById('manual-backup-btn'),
-            restoreBackupInput: document.getElementById('restore-backup-input'),
-            restoreBackupBtn: document.getElementById('restore-backup-btn'),
             addTaskBtn: document.getElementById('add-task-btn'),
             quickAddBtn: document.getElementById('quick-add-btn'),
             newProjectBtn: document.getElementById('new-project-btn'),
@@ -2404,121 +2380,6 @@
             showToast(`${completedTaskIds.length} completed task(s) cleared.`, 'success');
         }
         
-        // --- Data Backup & Restore ---
-        const BACKUP_INTERVAL_MS = 1000 * 60 * 60 * 24 * 3; 
-        const SETTINGS_KEY_LAST_BACKUP = 'lastBackupTimestamp';
-
-        async function exportDBToString() {
-            const data = {};
-            for (const storeName of db.tables.map(t => t.name)) {
-                data[storeName] = await db.table(storeName).toArray();
-            }
-            return JSON.stringify(data, null, 2);
-        }
-        async function saveBackupToFileSystem(jsonString) {
-            try {
-                const blob = new Blob([jsonString], { type: 'application/json' });
-                const filename = `TaskManager_Backup_${new Date().toISOString().slice(0,10)}.json`;
-                if (window.showSaveFilePicker) { 
-                    const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'JSON Files', accept: {'application/json': ['.json']} }] });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                } else { 
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }
-                showToast('Backup created successfully!', 'success');
-                return true;
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    showToast('Backup cancelled by user.', 'info');
-                } else {
-                    console.error('Failed to save backup:', error);
-                    showToast('Failed to create backup. See console for details.', 'error');
-                }
-                return false;
-            }
-        }
-        function updateBackupIndicator(timestamp) {
-            if (timestamp) {
-                요소.lastBackupIndicator.textContent = formatDateTime(new Date(timestamp).toISOString());
-            } else {
-                요소.lastBackupIndicator.innerHTML = ''; 
-            }
-        }
-        async function performBackup() {
-            showToast('Creating backup...', 'info');
-            try {
-                const jsonString = await exportDBToString();
-                const success = await saveBackupToFileSystem(jsonString);
-                if (success) {
-                    const now = Date.now();
-                    await putDexie(STORES.SETTINGS, {key: SETTINGS_KEY_LAST_BACKUP, value: now});
-                    updateBackupIndicator(now);
-                }
-            } catch (error) {
-                console.error('Backup process failed:', error);
-                showToast('Backup process failed.', 'error');
-            }
-        }
-        async function initAutoBackup() { 
-            const lastBackupSetting = await getDexie(STORES.SETTINGS, SETTINGS_KEY_LAST_BACKUP);
-            if (lastBackupSetting) {
-                updateBackupIndicator(lastBackupSetting.value);
-            }
-        }
-        async function handleRestoreFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!confirm("Restoring from backup will OVERWRITE ALL CURRENT DATA. This action cannot be undone. Are you sure?")) {
-                event.target.value = null; return;
-            }
-            showToast("Restoring backup... The application will refresh.", "info", 7000);
-            try {
-                const jsonData = await file.text();
-                const backupData = JSON.parse(jsonData);
-                for (const storeName of db.tables.map(t => t.name)) {
-                    if (backupData[storeName]) {
-                        await clearDexieStore(storeName);
-                        await db.table(storeName).bulkPut(backupData[storeName]);
-                    }
-                }
-                await loadDataFromDB(); 
-                setCurrentView(currentView || 'active'); 
-                요소.sortSelect.value = currentSort || 'priority';
-                setProjectsViewMode(projectsViewMode || 'grid');
-                if(요소.notesSortSelect) 요소.notesSortSelect.value = notesSort || 'date';
-                
-                renderTagFilters(); renderProjectFilters(); renderManageTags();
-                updateAllTaskPriorities(true); 
-                renderBasedOnView(currentView); 
-
-                if(currentProjectId && document.getElementById('project-detail').classList.contains('visible')) {
-                    const proj = projects.find(p=>p.id === currentProjectId);
-                    if(proj) openProjectDetail(currentProjectId); else setCurrentView('projects');
-                }
-                if(currentConceptId && document.getElementById('concept-detail').classList.contains('visible')) {
-                    const conc = concepts.find(c=>c.id === currentConceptId);
-                    if(conc) openConceptDetailView(currentConceptId); else setCurrentView('concepts');
-                }
-                const now = Date.now();
-                await putDexie(STORES.SETTINGS, {key: SETTINGS_KEY_LAST_BACKUP, value: now});
-                updateBackupIndicator(now);
-                showToast("Backup restored successfully! Data has been updated.", "success");
-            } catch (error) {
-                console.error("Error restoring backup:", error);
-                showToast("ERROR restoring backup: " + error.message, "error", 10000);
-            } finally {
-                event.target.value = null; 
-            }
-        }
         
         // --- Event Listeners Setup ---
         function setupEventListeners() {
@@ -2622,10 +2483,6 @@
             요소.saveEditedNoteBtn.addEventListener('click', saveEditedNote);
             요소.deleteCurrentNoteBtn.addEventListener('click', deleteCurrentNoteFromEditor);
 
-            // Data Management
-            요소.manualBackupBtn.addEventListener('click', performBackup);
-            요소.restoreBackupBtn.addEventListener('click', () => 요소.restoreBackupInput.click());
-            요소.restoreBackupInput.addEventListener('change', handleRestoreFileSelect);
         }
         function populateProjectSelect(selectElement) {
             const currentValue = selectElement.value;
@@ -2741,7 +2598,6 @@
             updateAllTaskPriorities(true); 
             if (window.startFirestoreSync) window.startFirestoreSync();
 
-            initAutoBackup(); 
             console.log('Task Manager Initialized.');
             showToast('Welcome back to Task Manager!', 'info', 2000);
         }
