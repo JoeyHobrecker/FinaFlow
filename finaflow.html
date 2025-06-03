@@ -2833,8 +2833,28 @@
         }
       }
     }
-    if (typeof window.location !== 'undefined') {
-      window.location.reload();
+    // Instead of forcing a full page reload (which caused an endless loop
+    // when coupled with the realtime Firestore listener), re-load the local
+    // data and re-render the current view so the UI reflects the updated state
+    // without another refresh.
+    await loadDataFromDB();
+    setCurrentView(currentView || 'active');
+    if (요소.sortSelect) 요소.sortSelect.value = currentSort || 'priority';
+    setProjectsViewMode(projectsViewMode || 'grid');
+    if (요소.notesSortSelect) 요소.notesSortSelect.value = notesSort || 'date';
+    renderTagFilters();
+    renderProjectFilters();
+    renderManageTags();
+    updateAllTaskPriorities(true);
+    renderBasedOnView(currentView);
+
+    if (currentProjectId && document.getElementById('project-detail').classList.contains('visible')) {
+      const proj = projects.find(p => p.id === currentProjectId);
+      if (proj) openProjectDetail(currentProjectId); else setCurrentView('projects');
+    }
+    if (currentConceptId && document.getElementById('concept-detail').classList.contains('visible')) {
+      const conc = concepts.find(c => c.id === currentConceptId);
+      if (conc) openConceptDetailView(currentConceptId); else setCurrentView('concepts');
     }
   }
 
