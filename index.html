@@ -217,7 +217,7 @@
         }
         #concept-input { min-height: 120px; resize: vertical; margin-top: 10px; }
         .concept-input-container .action-btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        #save-concept-btn, #work-out-concept-btn { width: auto; } /* Make them fit content */
+        #save-concept-btn, #work-out-concept-btn { width: auto; background-color: var(--success-color); color: var(--primary-color); } /* Make them fit content */
 
         .quick-tasks-list, .concepts-list { display: flex; flex-direction: column; gap: 12px; }
         .quick-task-item, .concept-item {
@@ -314,6 +314,7 @@
             border-radius: var(--border-radius-sm); font-size: 0.9em; gap: 6px;
         }
         #add-project-task-btn { background-color: var(--success-color); color: var(--primary-color); }
+        #add-note-btn { background-color: var(--success-color); color: var(--primary-color); }
         .add-project-task-btn:hover, .add-note-btn:hover, .file-upload-label:hover { filter: brightness(1.15); transform: translateY(-2px); }
         
         .project-tasks-list { display: flex; flex-direction: column; gap: 12px; }
@@ -1852,6 +1853,8 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) { showToast('Task not found.', 'error'); return; }
 
+            openModal(요소.editTaskModal);
+
             populateProjectSelect(요소.editTaskProjectSelect);
 
             요소.editTaskIdInput.value = task.id;
@@ -1873,12 +1876,13 @@
                 요소.editTaskWaitingReasonContainer.classList.add('hidden');
                 요소.editTaskWaitingReasonInput.value = '';
             }
-            openModal(요소.editTaskModal); 
         }
         function openAddProjectModal() { openModal(요소.addProjectModal); }
         function openEditProjectModal(projectId) {
             const project = projects.find(p => p.id === projectId);
             if (!project) { showToast('Project not found.', 'error'); return; }
+
+            openModal(요소.editProjectModal);
 
             요소.editProjectForm.reset();
             요소.editProjectIdInput.value = project.id;
@@ -1900,9 +1904,8 @@
                 요소.editProjectWaitingReasonContainer.classList.add('hidden');
                  요소.editProjectWaitingReasonInput.value = '';
             }
-            openModal(요소.editProjectModal);
         }
-        function openAddNoteModal(forProjectId) { 
+        function openAddNoteModal(forProjectId) {
             if (!forProjectId) { showToast("Project context required.", "error"); return; }
             요소.noteProjectIdInput.value = forProjectId;
             openModal(요소.addNoteModal);
