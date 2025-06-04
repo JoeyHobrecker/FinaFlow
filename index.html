@@ -2598,7 +2598,6 @@
                         data[table.name] = await table.toArray();
                     }
                 }
-                if (data.files) data.files.forEach(f => delete f.dataUrl);
                 return data;
             };
 
