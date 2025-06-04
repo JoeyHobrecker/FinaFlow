@@ -1106,6 +1106,15 @@
                 ? window.crypto.randomUUID()
                 : generateId();
         }
+        async function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                if (!window.FileReader) return reject(new Error('FileReader not supported'));
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
 
         // --- Toast Notifications ---
         function showToast(message, type = 'info', duration = 3500) {
@@ -1719,9 +1728,10 @@
             
             요소.noteEditorOverlay.classList.add('visible');
         }
-        function closeNoteEditor() { 
-            요소.noteEditorOverlay.classList.remove('visible'); 
-            currentEditingNoteId = null; 
+        function closeNoteEditor() {
+            요소.noteEditorOverlay.classList.remove('visible');
+            currentEditingNoteId = null;
+            if (quillEditor) quillEditor.root.innerHTML = '';
         }
         async function saveEditedNote() { 
             if (!quillEditor) { showToast("Editor not available.", "error"); return; }
@@ -1825,7 +1835,11 @@
 
             modalEl.classList.add('visible'); 
         }
-        function closeModal(modalEl) { modalEl.classList.remove('visible'); }
+        function closeModal(modalEl) {
+            modalEl.classList.remove('visible');
+            modalEl.querySelectorAll('input[type="file"]').forEach(inp => inp.value = '');
+            modalEl.querySelectorAll('.image-preview').forEach(p => p.innerHTML = '');
+        }
         function openAddTaskModal(forProjectId = null) {
             openModal(요소.addTaskModal);
             if (forProjectId) {
@@ -1854,7 +1868,11 @@
 
 
         }
-        function openAddProjectModal() { openModal(요소.addProjectModal); }
+        function openAddProjectModal() {
+            openModal(요소.addProjectModal);
+            요소.projectImageUploadInput.value = '';
+            요소.projectImagePreview.innerHTML = '';
+        }
         function openEditProjectModal(projectId) {
             const project = projects.find(p => p.id === projectId);
             if (!project) { showToast('Project not found.', 'error'); return; }
@@ -1872,14 +1890,15 @@
             } else {
                 요소.editProjectImagePreview.innerHTML = '';
             }
+            요소.editProjectImageUploadInput.value = '';
             
             요소.editProjectForm.querySelector(`input[name="edit-project-status"][value="${project.status}"]`).checked = true;
 
         }
         function openAddNoteModal(forProjectId) {
             if (!forProjectId) { showToast("Project context required.", "error"); return; }
-            요소.noteProjectIdInput.value = forProjectId;
             openModal(요소.addNoteModal);
+            요소.noteProjectIdInput.value = forProjectId;
         }
 
         // --- Form Submissions ---
@@ -2011,10 +2030,11 @@
         function handleImageUpload(inputElement, previewElement) {
             const file = inputElement.files[0];
             if (file) {
-                if (file.size > 2 * 1024 * 1024) { 
+                if (!window.FileReader) { showToast('Image upload not supported', 'error'); return; }
+                if (file.size > 2 * 1024 * 1024) {
                     showToast("Image size should be less than 2MB.", "warning");
-                    inputElement.value = ""; 
-                    previewElement.innerHTML = ""; 
+                    inputElement.value = "";
+                    previewElement.innerHTML = "";
                     return;
                 }
                 const reader = new FileReader();
@@ -2468,7 +2488,7 @@
                 renderTagFilters();
                 renderProjectFilters();
                 renderManageTags();
-                updateAllTaskPriorities(true);
+                updateAllTaskPriorities(false);
                 if (currentProjectId && document.getElementById("project-detail").classList.contains("visible")) {
                     const proj = projects.find(p => p.id === currentProjectId);
                     if (proj) openProjectDetail(currentProjectId); else setCurrentView("projects");
@@ -2481,6 +2501,8 @@
 
 
             await loadDataFromDB();
+            populateProjectSelect(요소.taskProjectSelect);
+            populateProjectSelect(요소.editTaskProjectSelect);
             initializeQuillEditor();
             setupEventListeners();
             
@@ -2492,8 +2514,11 @@
             renderTagFilters(); 
             renderProjectFilters(); 
             renderManageTags();
-            updateAllTaskPriorities(true); 
-            if (window.startFirestoreSync) window.startFirestoreSync();
+            updateAllTaskPriorities(true);
+            if (window.startFirestoreSync && !window.__firestoreSyncStarted) {
+                window.startFirestoreSync();
+                window.__firestoreSyncStarted = true;
+            }
 
             console.log('Task Manager Initialized.');
             showToast('Welcome back to Task Manager!', 'info', 2000);
@@ -2581,6 +2606,8 @@
 
   /* --- lazy bootstrap, called from init() once Dexie is ready --- */
   export function startFirestoreSync () {
+    if (window.__firestoreSyncStarted) return;
+    window.__firestoreSyncStarted = true;
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db   = getFirestore(app);
     const ref  = doc(db, "state", "main");
