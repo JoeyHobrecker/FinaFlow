@@ -283,7 +283,7 @@
         .status-badge.status-waiting { background-color: var(--waiting-color); color: var(--primary-color); }
         .status-badge.status-completed { background-color: var(--completed-color); color: var(--primary-color); }
         .status-badge.status-storage { background-color: var(--storage-color); color: var(--offwhite); }
-        .waiting-reason { font-size: 0.85em; opacity: 0.8; font-style: italic; }
+
         
         .project-detail-tabs { display: flex; gap: 1px; border-bottom: 1px solid var(--border-color); margin-bottom: 25px; background-color: var(--input-bg-color); border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0; overflow:hidden;}
         .tab-btn {
@@ -336,6 +336,8 @@
         .view-toggle-btn { background-color: var(--input-bg-color); padding: 9px 14px; border-radius: var(--border-radius-sm); gap: 6px; }
         .view-toggle-btn.active { background-color: var(--accent-color); font-weight: 500; }
         .view-toggle-btn:hover:not(.active) { background-color: var(--border-color); }
+        .folder-nav { display:flex; align-items:center; gap:10px; margin-top:10px; }
+        .folder-nav.hidden { display:none; }
         .projects-filter { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items:center; margin-top:20px;}
         .projects-filter input[type="text"], .projects-filter select { flex: 1; min-width: 200px; padding: 12px 15px; background-color: var(--input-bg-color); border-radius: var(--border-radius-sm); border:1px solid var(--border-color); color: var(--text-color);}
         .projects-filter input[type="text"]:focus, .projects-filter select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(var(--sapphire-rgb), 0.2); }
@@ -493,7 +495,7 @@
         .task-priority.priority-val-1 { border-color: var(--lavender); color:var(--lavender); } /* Medium */
         .task-priority.priority-val-2, .task-priority.priority-val-3 { border-color: var(--warning-color); color: var(--warning-color); } /* High */
         .task-priority.priority-val-4, .task-priority.priority-val-5, .task-priority.priority-val-6 { border-color: var(--danger-color); color: var(--danger-color); } /* Urgent */
-        .task-waiting-reason { font-style: italic; font-size: 0.85em; color: var(--light-text); opacity: 0.8; margin-top: 8px; padding: 8px; background-color: rgba(var(--lavender-rgb), 0.05); border-left: 3px solid var(--lavender); border-radius: 4px; }
+
         
         /* Modals (General) */
         .modal {
@@ -605,64 +607,36 @@
             .file-item {padding:12px;} .file-icon {font-size:2em;}
         }
 
-        /* Right Pop-out Menu */
-        #side-menu-handle {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 12px;
-            height: 100vh;
-            background: linear-gradient(to right, var(--secondary-color), transparent);
-            z-index: 998;
-        }
-        #side-menu {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 230px;
-            height: 100vh;
+        /* Folder Cards */
+        .folder-card {
             background-color: var(--secondary-color);
-            box-shadow: 2px 0 8px rgba(0,0,0,0.5);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-md);
             padding: 20px;
-            color: var(--offwhite);
-            transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
-            z-index: 999;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: var(--transition-std);
         }
-        #side-menu.open { transform: translateX(0); }
-        #side-menu h2 {
-            margin: 0 0 20px 0;
-            font-size: 1.3em;
-            font-family: 'Poppins', sans-serif;
-        }
-        #side-menu ul {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 20px;
-            flex-grow: 1;
-        }
-        #side-menu li { margin-bottom: 10px; }
-        #side-menu a {
-            display: block;
-            background-color: var(--primary-color);
-            color: var(--offwhite);
-            padding: 10px 15px;
+        .folder-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+        .folder-icon { font-size: 2.2em; }
+        .folder-card .folder-name { font-weight: 500; }
+
+        .folder-list-item {
+            background-color: var(--secondary-color);
             border-radius: var(--border-radius-sm);
-            text-decoration: none;
-            transition: background 0.2s;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: var(--transition-std);
         }
-        #side-menu a:hover { background-color: var(--accent-color); }
-        #side-menu a.active {
-            background-color: var(--success-color);
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-        #side-menu a.disabled {
-            opacity: 0.6;
-            pointer-events: none;
-        }
+        .folder-list-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .folder-list-item .folder-icon { font-size: 1.6em; }
         #menu-pin-btn {
             background: none;
             border: 1px solid var(--border-color);
@@ -761,7 +735,9 @@
                     <div class="projects-header"><h3>Projects</h3><div class="projects-view-toggle">
                         <button id="grid-view-btn" class="view-toggle-btn action-btn active"><i class="fas fa-th-large"></i> Grid</button>
                         <button id="list-view-btn" class="view-toggle-btn action-btn"><i class="fas fa-list"></i> List</button>
+                        <button id="add-folder-btn" class="action-btn"><i class="fas fa-folder-plus"></i> Add Folder</button>
                     </div></div>
+                    <div id="folder-nav" class="folder-nav hidden"><button id="back-folder-btn" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</button><span id="current-folder-name"></span></div>
                     <div class="projects-filter">
                         <input type="text" id="project-search" placeholder="Search projects...">
                         <select id="project-status-filter">
@@ -861,7 +837,6 @@
                 <label class="radio-container"><input type="radio" name="status" value="active" checked><span class="radio-label">Active</span></label>
                 <label class="radio-container"><input type="radio" name="status" value="waiting"><span class="radio-label">Waiting</span></label>
             </div></div>
-            <div id="waiting-reason-container" class="form-group hidden-by-default"><label for="waiting-reason">Waiting Reason</label><input type="text" id="waiting-reason" placeholder="e.g., waiting for feedback"></div>
             <div class="form-actions"><button type="button" id="cancel-task-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add Task</button></div>
         </form></div>
     </div></div>
@@ -883,7 +858,6 @@
                 <label class="radio-container"><input type="radio" name="edit-status" value="active"><span class="radio-label">Active</span></label>
                 <label class="radio-container"><input type="radio" name="edit-status" value="waiting"><span class="radio-label">Waiting</span></label>
             </div></div>
-            <div id="edit-waiting-reason-container" class="form-group hidden-by-default"><label for="edit-waiting-reason">Waiting Reason</label><input type="text" id="edit-waiting-reason"></div>
             <div class="form-actions"><button type="button" id="delete-task-btn" class="delete-btn">Delete Task</button><button type="button" id="cancel-edit-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save Changes</button></div>
         </form></div>
     </div></div>
@@ -900,7 +874,6 @@
                 <label class="radio-container"><input type="radio" name="project-status" value="storage"><span class="radio-label">Storage</span></label>
                 <label class="radio-container"><input type="radio" name="project-status" value="completed"><span class="radio-label">Completed</span></label>
             </div></div>
-            <div id="project-waiting-reason-container" class="form-group hidden-by-default"><label for="project-waiting-reason">Waiting Reason</label><input type="text" id="project-waiting-reason"></div>
             <div class="form-actions"><button type="button" id="cancel-project-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add Project</button></div>
         </form></div>
     </div></div>
@@ -918,7 +891,6 @@
                 <label class="radio-container"><input type="radio" name="edit-project-status" value="storage"><span class="radio-label">Storage</span></label>
                 <label class="radio-container"><input type="radio" name="edit-project-status" value="completed"><span class="radio-label">Completed</span></label>
             </div></div>
-            <div id="edit-project-waiting-reason-container" class="form-group hidden-by-default"><label for="edit-project-waiting-reason">Waiting Reason</label><input type="text" id="edit-project-waiting-reason"></div>
             <div class="form-actions"><button type="button" id="delete-project-btn-modal" class="delete-btn">Delete Project</button><button type="button" id="cancel-edit-project-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save Changes</button></div>
         </form></div>
     </div></div>
@@ -960,7 +932,9 @@
         let projects = [];
         let concepts = [];
         let notes = [];
-        let files = {}; 
+        let files = {};
+        let folders = [];
+        let currentFolderId = null;
         
         let currentView = 'active';
         let currentSort = 'priority';
@@ -977,7 +951,7 @@
         const STORES = {
             TASKS: 'tasks', QUICK_TASKS: 'quickTasks', TAGS: 'tags',
             PROJECTS: 'projects', CONCEPTS: 'concepts', NOTES: 'notes',
-            FILES: 'files', SETTINGS: 'settings'
+            FILES: 'files', SETTINGS: 'settings', FOLDERS: 'folders'
         };
 
         window.finaDB = null;
@@ -1000,6 +974,10 @@
             addTaskBtn: document.getElementById('add-task-btn'),
             quickAddBtn: document.getElementById('quick-add-btn'),
             newProjectBtn: document.getElementById('new-project-btn'),
+            addFolderBtn: document.getElementById('add-folder-btn'),
+            folderNav: document.getElementById('folder-nav'),
+            backFolderBtn: document.getElementById('back-folder-btn'),
+            currentFolderName: document.getElementById('current-folder-name'),
             newConceptBtn: document.getElementById('new-concept-btn'),
             clearCompletedBtn: document.getElementById('clear-completed-btn'),
             tasksList: document.getElementById('tasks-list'),
@@ -1067,8 +1045,6 @@
             taskTagsInput: document.getElementById('task-tags'),
             suggestedTagsContainer: document.getElementById('suggested-tags'),
             taskDeadlineDateInput: document.getElementById('task-deadline-date'),
-            taskWaitingReasonContainer: document.getElementById('waiting-reason-container'),
-            taskWaitingReasonInput: document.getElementById('waiting-reason'),
             cancelTaskBtn: document.getElementById('cancel-task-btn'),
             editTaskForm: document.getElementById('edit-task-form'),
             editTaskIdInput: document.getElementById('edit-task-id'),
@@ -1078,8 +1054,6 @@
             editTaskTagsInput: document.getElementById('edit-task-tags'),
             editSuggestedTagsContainer: document.getElementById('edit-suggested-tags'),
             editTaskDeadlineDateInput: document.getElementById('edit-task-deadline-date'),
-            editTaskWaitingReasonContainer: document.getElementById('edit-waiting-reason-container'),
-            editTaskWaitingReasonInput: document.getElementById('edit-waiting-reason'),
             deleteTaskBtn: document.getElementById('delete-task-btn'), 
             cancelEditTaskBtn: document.getElementById('cancel-edit-btn'),
             projectForm: document.getElementById('project-form'),
@@ -1088,8 +1062,6 @@
             projectImageUploadInput: document.getElementById('project-image-upload'),
             projectImagePreview: document.getElementById('image-preview'),
             projectDeadlineDateInput: document.getElementById('project-deadline-date'),
-            projectWaitingReasonContainer: document.getElementById('project-waiting-reason-container'),
-            projectWaitingReasonInput: document.getElementById('project-waiting-reason'),
             cancelProjectBtn: document.getElementById('cancel-project-btn'),
             editProjectForm: document.getElementById('edit-project-form'),
             editProjectIdInput: document.getElementById('edit-project-id'),
@@ -1098,8 +1070,6 @@
             editProjectImageUploadInput: document.getElementById('edit-project-image-upload'),
             editProjectImagePreview: document.getElementById('edit-image-preview'),
             editProjectDeadlineDateInput: document.getElementById('edit-project-deadline-date'),
-            editProjectWaitingReasonContainer: document.getElementById('edit-project-waiting-reason-container'),
-            editProjectWaitingReasonInput: document.getElementById('edit-project-waiting-reason'),
             deleteProjectModalBtn: document.getElementById('delete-project-btn-modal'), 
             cancelEditProjectBtn: document.getElementById('cancel-edit-project-btn'),
             noteForm: document.getElementById('note-form'),
@@ -1179,9 +1149,10 @@
         // --- Data Loading & Saving ---
        async function loadDataFromDB() {
             try {
-                [tasks, quickTasks, projects, concepts, notes] = await Promise.all([
+                [tasks, quickTasks, projects, concepts, notes, folders] = await Promise.all([
                     getAllDexie(STORES.TASKS), getAllDexie(STORES.QUICK_TASKS),
-                    getAllDexie(STORES.PROJECTS), getAllDexie(STORES.CONCEPTS), getAllDexie(STORES.NOTES)
+                    getAllDexie(STORES.PROJECTS), getAllDexie(STORES.CONCEPTS), getAllDexie(STORES.NOTES),
+                    getAllDexie(STORES.FOLDERS)
                 ]);
                 const tagObjects = await getAllDexie(STORES.TAGS) || []; tags = tagObjects.map(t => t.tag).sort();
                 const fileObjects = await getAllDexie(STORES.FILES) || []; 
@@ -1301,7 +1272,6 @@
                 </div>
                 ${proj ? `<div class="task-project">Project: ${truncateText(proj.title, 25)} (${capitalizeFirstLetter(proj.status)})</div>` : ''}
                 ${task.tags && task.tags.length > 0 ? `<div class="task-tags">${task.tags.map(t => `<span class="task-tag">${t}</span>`).join('')}</div>` : ''}
-                ${task.status === 'waiting' && task.waitingReason ? `<div class="task-waiting-reason"><i class="fas fa-hourglass-half"></i> ${truncateText(task.waitingReason, 40)}</div>` : ''}
                 <div class="task-actions">
                     <button class="task-action-btn task-complete-btn" title="${task.completed?'Mark Incomplete':'Mark Complete'}"><i class="fas ${task.completed?'fa-undo-alt':'fa-check'}"></i></button>
                     <button class="task-action-btn task-edit-btn" title="Edit Task"><i class="fas fa-pencil-alt"></i></button>
@@ -1317,8 +1287,6 @@
         async function quickChangeTaskStatus(id, newStatus) {
             const taskIndex = tasks.findIndex(t => t.id === id); if (taskIndex === -1) return;
             tasks[taskIndex].status = newStatus;
-            if (newStatus === 'waiting' && !tasks[taskIndex].waitingReason) tasks[taskIndex].waitingReason = "Quick move";
-            else if (newStatus === 'active') tasks[taskIndex].waitingReason = null;
             tasks[taskIndex].updatedAt = new Date().toISOString();
             tasks[taskIndex].priority = calculatePriority(tasks[taskIndex]);
             await putDexie(STORES.TASKS, tasks[taskIndex]);
@@ -1453,23 +1421,59 @@
             let filteredProjects = projects.filter(p => {
                 const titleMatch = p.title.toLowerCase().includes(searchTerm);
                 const statusMatch = statusFilter === 'all' || p.status === statusFilter;
-                return titleMatch && statusMatch;
+                const folderMatch = (currentFolderId ? p.folderId === currentFolderId : !p.folderId);
+                return titleMatch && statusMatch && folderMatch;
             });
+
+            const foldersInView = folders.filter(f => f.parentId === currentFolderId);
+
+            if (currentFolderId) {
+                const currentFolder = folders.find(f=>f.id===currentFolderId);
+                요소.folderNav.classList.remove('hidden');
+                요소.currentFolderName.textContent = currentFolder ? currentFolder.name : '';
+            } else {
+                요소.folderNav.classList.add('hidden');
+                요소.currentFolderName.textContent = '';
+            }
 
             filteredProjects.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)); 
 
             if (projectsViewMode === 'grid') {
                 요소.projectsGrid.innerHTML = '';
-                if (filteredProjects.length === 0) 요소.projectsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><i class="fas fa-folder-open"></i><p>No projects found.</p></div>`;
+                foldersInView.forEach((f,i) => 요소.projectsGrid.appendChild(createFolderGridElement(f,i)));
+                if (filteredProjects.length === 0 && foldersInView.length === 0) 요소.projectsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><i class="fas fa-folder-open"></i><p>No projects found.</p></div>`;
                 else filteredProjects.forEach((p, i) => 요소.projectsGrid.appendChild(createProjectGridElement(p,i)));
             } else {
                 요소.projectsListContainer.innerHTML = '';
-                if (filteredProjects.length === 0) 요소.projectsListContainer.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open"></i><p>No projects found.</p></div>`;
+                foldersInView.forEach((f,i) => 요소.projectsListContainer.appendChild(createFolderListElement(f,i)));
+                if (filteredProjects.length === 0 && foldersInView.length === 0) 요소.projectsListContainer.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open"></i><p>No projects found.</p></div>`;
                 else filteredProjects.forEach((p,i) => 요소.projectsListContainer.appendChild(createProjectListElement(p,i)));
             }
         }
+        function createFolderGridElement(folder, index) {
+            const el = document.createElement('div');
+            el.className = 'folder-card';
+            el.dataset.id = folder.id;
+            el.style.animationDelay = `${index * 0.03}s`;
+            el.innerHTML = `<div class="folder-icon" style="color:${folder.color}"><i class="fas fa-folder"></i></div><div class="folder-name">${truncateText(folder.name,30)}</div>`;
+            el.addEventListener('click', () => { currentFolderId = folder.id; renderProjects(); });
+            el.addEventListener('dragover', e => e.preventDefault());
+            el.addEventListener('drop', e => { const pid = e.dataTransfer.getData('text/plain'); moveProjectToFolder(pid, folder.id); });
+            return el;
+        }
+        function createFolderListElement(folder, index) {
+            const el = document.createElement('div');
+            el.className = 'folder-list-item';
+            el.dataset.id = folder.id;
+            el.style.animationDelay = `${index * 0.02}s`;
+            el.innerHTML = `<span class="folder-icon" style="color:${folder.color}"><i class="fas fa-folder"></i></span><span class="folder-name">${truncateText(folder.name,40)}</span>`;
+            el.addEventListener('click', () => { currentFolderId = folder.id; renderProjects(); });
+            el.addEventListener('dragover', e => e.preventDefault());
+            el.addEventListener('drop', e => { const pid = e.dataTransfer.getData('text/plain'); moveProjectToFolder(pid, folder.id); });
+            return el;
+        }
         function createProjectGridElement(project, index) {
-            const el = document.createElement('div'); el.className = `project-card status-${project.status}`; el.dataset.id = project.id; el.style.animationDelay = `${index * 0.03}s`;
+            const el = document.createElement('div'); el.className = `project-card status-${project.status}`; el.dataset.id = project.id; el.style.animationDelay = `${index * 0.03}s`; el.draggable = true;
             const imgStyle = project.imageData ? `background-image:url('${project.imageData}')` : `background-color:var(--input-bg-color);`;
             const imgContent = !project.imageData ? `<div class="no-image-placeholder"><i class="fas fa-folder-open"></i></div>` : '';
             const tasksInProj = tasks.filter(t => t.projectId === project.id);
@@ -1488,6 +1492,7 @@
                     <button class="project-toggle-status action-btn" title="Cycle Status"><i class="fas fa-sync-alt"></i> Cycle Status</button>
                 </div>`;
             el.addEventListener('click', e => { if (!e.target.closest('.project-toggle-status')) openProjectDetail(project.id); });
+            el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', project.id); });
             el.querySelector('.project-toggle-status').addEventListener('click', e => { e.stopPropagation(); toggleProjectStatusCycle(project.id); });
             return el;
         }
@@ -1496,6 +1501,7 @@
             el.className = `project-list-item status-${project.status}`;
             el.dataset.id = project.id;
             el.style.animationDelay = `${index * 0.02}s`;
+            el.draggable = true;
 
             const tasksInProj = tasks.filter(t => t.projectId === project.id);
             const activeT = tasksInProj.filter(t => !t.completed && t.status === 'active').length;
@@ -1516,6 +1522,7 @@
                 <button class="project-toggle-status action-btn" title="Cycle Status"><i class="fas fa-sync-alt"></i> Cycle</button>
             `;
             el.addEventListener('click', e => { if (!e.target.closest('.project-toggle-status')) openProjectDetail(project.id); });
+            el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', project.id); });
             el.querySelector('.project-toggle-status').addEventListener('click', e => { e.stopPropagation(); toggleProjectStatusCycle(project.id); });
             return el;
         }
@@ -1529,12 +1536,30 @@
             project.status = statuses[currentStatusIndex];
             project.updatedAt = new Date().toISOString();
 
-            if (project.status === 'waiting' && !project.waitingReason) project.waitingReason = "Cycled to waiting";
-            else if (project.status !== 'waiting') project.waitingReason = null;
+
 
             await putDexie(STORES.PROJECTS, project);
-            renderProjects(); renderProjectFilters(); renderTasks(); 
+            renderProjects(); renderProjectFilters(); renderTasks();
             showToast(`Project "${truncateText(project.title,20)}" status changed to ${project.status}.`, 'success');
+        }
+
+        async function addFolder() {
+            const name = prompt('Folder name?');
+            if (!name) return;
+            const color = prompt('Folder color (hex)', '#4F7FFF') || '#4F7FFF';
+            const folder = { id: generateId(), name, color, parentId: currentFolderId, createdAt: new Date().toISOString() };
+            folders.push(folder);
+            await addDexie(STORES.FOLDERS, folder);
+            renderProjects();
+        }
+
+        async function moveProjectToFolder(projectId, folderId) {
+            const idx = projects.findIndex(p => p.id === projectId);
+            if (idx === -1) return;
+            projects[idx].folderId = folderId;
+            projects[idx].updatedAt = new Date().toISOString();
+            await putDexie(STORES.PROJECTS, projects[idx]);
+            renderProjects();
         }
         function setProjectsViewMode(mode) {
             projectsViewMode = mode;
@@ -1570,9 +1595,7 @@
             }
             
             let statusHTML = `<span class="status-badge status-${project.status}">${capitalizeFirstLetter(project.status)}</span>`;
-            if (project.status === 'waiting' && project.waitingReason) {
-                statusHTML += `<span class="waiting-reason">${project.waitingReason}</span>`;
-            }
+            
             요소.projectDetailStatus.innerHTML = statusHTML;
 
             let datesHTML = `<span class="date-item"><i class="far fa-clock"></i> Created: ${formatDate(project.createdAt)}</span>`;
@@ -1652,7 +1675,7 @@
                     <div class="project-task-meta">
                         ${task.deadline ? `<span class="task-deadline ${dlClass}"><i class="far fa-calendar-alt"></i>${dlStr}</span>` : ''}
                         <span><i class="fas fa-star"></i>${capitalizeFirstLetter(task.importance || 'normal')}</span>
-                        ${task.status === 'waiting' ? `<span class="task-waiting"><i class="fas fa-hourglass-half"></i> ${task.waitingReason ? truncateText(task.waitingReason, 20) : 'Waiting'}</span>` : ''}
+
                     </div>
                 </div>
                 <div class="project-task-actions">
@@ -1935,13 +1958,7 @@
             const statusRadio = 요소.editTaskForm.querySelector(`input[name="edit-status"][value="${task.status}"]`);
             if (statusRadio) statusRadio.checked = true; else 요소.editTaskForm.querySelector(`input[name="edit-status"][value="active"]`).checked = true;
 
-            if (task.status === 'waiting') {
-                요소.editTaskWaitingReasonContainer.classList.remove('hidden');
-                요소.editTaskWaitingReasonInput.value = task.waitingReason || '';
-            } else {
-                요소.editTaskWaitingReasonContainer.classList.add('hidden');
-                요소.editTaskWaitingReasonInput.value = '';
-            }
+
         }
         function openAddProjectModal() { openModal(요소.addProjectModal); }
         function openEditProjectModal(projectId) {
@@ -1963,13 +1980,7 @@
             }
             
             요소.editProjectForm.querySelector(`input[name="edit-project-status"][value="${project.status}"]`).checked = true;
-            if (project.status === 'waiting') {
-                요소.editProjectWaitingReasonContainer.classList.remove('hidden');
-                요소.editProjectWaitingReasonInput.value = project.waitingReason || '';
-            } else {
-                요소.editProjectWaitingReasonContainer.classList.add('hidden');
-                 요소.editProjectWaitingReasonInput.value = '';
-            }
+
         }
         function openAddNoteModal(forProjectId) {
             if (!forProjectId) { showToast("Project context required.", "error"); return; }
@@ -1993,15 +2004,12 @@
                 deadline: (isEdit ? 요소.editTaskDeadlineDateInput : 요소.taskDeadlineDateInput).value || null,
                 importance: formEl.querySelector(`input[name="${isEdit ? 'edit-' : ''}importance"]:checked`).value,
                 status: formEl.querySelector(`input[name="${isEdit ? 'edit-' : ''}status"]:checked`).value,
-                waitingReason: null,
                 completed: existingTask?.completed || false,
                 completedAt: existingTask?.completedAt || null,
                 createdAt: existingTask?.createdAt || new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
-            if (taskData.status === 'waiting') {
-                taskData.waitingReason = (isEdit ? 요소.editTaskWaitingReasonInput : 요소.taskWaitingReasonInput).value.trim() || "Waiting";
-            }
+
             taskData.priority = calculatePriority(taskData);
 
             try {
@@ -2047,13 +2055,11 @@
                 imageData: imageDataUrl,
                 deadline: (isEdit ? 요소.editProjectDeadlineDateInput : 요소.projectDeadlineDateInput).value || null,
                 status: formEl.querySelector(`input[name="${isEdit ? 'edit-' : ''}project-status"]:checked`).value,
-                waitingReason: null,
+                folderId: isEdit ? existingProject.folderId : currentFolderId,
                 createdAt: existingProject?.createdAt || new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
-            if (projectData.status === 'waiting') {
-                projectData.waitingReason = (isEdit ? 요소.editProjectWaitingReasonInput : 요소.projectWaitingReasonInput).value.trim() || "Waiting";
-            }
+
 
             try {
                 await putDexie(STORES.PROJECTS, projectData);
@@ -2423,6 +2429,8 @@
             요소.listViewBtn.addEventListener('click', () => setProjectsViewMode('list'));
             요소.projectSearchInput.addEventListener('input', renderProjects);
             요소.projectStatusFilter.addEventListener('change', renderProjects);
+            요소.addFolderBtn.addEventListener('click', () => addFolder());
+            요소.backFolderBtn.addEventListener('click', () => { currentFolderId = folders.find(f=>f.id===currentFolderId)?.parentId || null; renderProjects(); });
 
             // Project Detail View
             요소.backToProjectsBtn.addEventListener('click', () => setCurrentView('projects'));
@@ -2451,8 +2459,6 @@
             요소.taskForm.addEventListener('submit', e => { e.preventDefault(); handleTaskFormSubmit(요소.taskForm, false); });
             요소.editTaskForm.addEventListener('submit', e => { e.preventDefault(); handleTaskFormSubmit(요소.editTaskForm, true); });
             요소.deleteTaskBtn.addEventListener('click', () => { if(요소.editTaskIdInput.value) deleteTask(요소.editTaskIdInput.value, true); });
-            setupFormDynamicBehavior(요소.taskForm, 'status', 'waiting', 'waiting-reason-container');
-            setupFormDynamicBehavior(요소.editTaskForm, 'edit-status', 'waiting', 'edit-waiting-reason-container');
             [요소.taskTagsInput, 요소.editTaskTagsInput].forEach(input => {
                 input.addEventListener('focus', () => {
                     const container = input.id === 'task-tags' ? 요소.suggestedTagsContainer : 요소.editSuggestedTagsContainer;
@@ -2471,8 +2477,7 @@
             요소.deleteProjectModalBtn.addEventListener('click', () => { if(요소.editProjectIdInput.value) deleteProject(요소.editProjectIdInput.value, true); });
             요소.projectImageUploadInput.addEventListener('change', () => handleImageUpload(요소.projectImageUploadInput, 요소.projectImagePreview));
             요소.editProjectImageUploadInput.addEventListener('change', () => handleImageUpload(요소.editProjectImageUploadInput, 요소.editProjectImagePreview));
-            setupFormDynamicBehavior(요소.projectForm, 'project-status', 'waiting', 'project-waiting-reason-container');
-            setupFormDynamicBehavior(요소.editProjectForm, 'edit-project-status', 'waiting', 'edit-project-waiting-reason-container');
+
 
 
             // Note Form (Simple Add Modal)
@@ -2529,7 +2534,7 @@
                 return;
             }
             db = new Dexie('finaTaskManager');
-            db.version(3).stores({
+            db.version(4).stores({
                 tasks: 'id, projectId, status, *tags, completed, priority, deadline, createdAt',
                 quickTasks: 'id, createdAt',
                 tags: 'tag',
@@ -2537,7 +2542,8 @@
                 concepts: 'id, createdAt, title, updatedAt',
                 notes: 'id, projectId, *tags, updatedAt, title, createdAt',
                 files: 'id, projectId, createdAt',
-                settings: 'key'
+                settings: 'key',
+                folders: 'id,parentId,createdAt'
             });
             window.finaDB = db;
 
@@ -2606,19 +2612,6 @@
 })();
     </script>
 
-    <div id="side-menu-handle"></div>
-    <nav id="side-menu">
-        <h2>Fina Finder</h2>
-        <ul>
-            <li><a href="finaflow.html" class="active">Finaflow</a></li>
-            <li><a href="#" class="disabled">Placeholder 1</a></li>
-            <li><a href="#" class="disabled">Placeholder 2</a></li>
-            <li><a href="#" class="disabled">Placeholder 3</a></li>
-            <li><a href="#" class="disabled">Placeholder 4</a></li>
-            <li><a href="#" class="disabled">Placeholder 5</a></li>
-        </ul>
-        <button id="menu-pin-btn">Pin</button>
-    </nav>
 
 <!-- DEBUG LAYER -->
 <script>
@@ -2672,26 +2665,6 @@
       console.log('[STATE SNAPSHOT]', stateSnapshot);
       return stateSnapshot;
   };
-})();
-</script>
-<script>
-(function(){
-    const menu = document.getElementById('side-menu');
-    const handle = document.getElementById('side-menu-handle');
-    const pinBtn = document.getElementById('menu-pin-btn');
-    let pinned = false;
-
-    const openMenu = () => menu.classList.add('open');
-    const closeMenu = () => { if (!pinned) menu.classList.remove('open'); };
-
-    handle.addEventListener('mouseenter', openMenu);
-    menu.addEventListener('mouseenter', openMenu);
-    menu.addEventListener('mouseleave', closeMenu);
-    pinBtn.addEventListener('click', () => {
-        pinned = !pinned;
-        pinBtn.textContent = pinned ? 'Unpin' : 'Pin';
-        if (!pinned) closeMenu();
-    });
 })();
 </script>
 <!-- 🔄 firestore-sync.js  (inline for now) -->
