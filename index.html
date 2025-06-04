@@ -188,7 +188,7 @@
         .action-btn:active { transform: scale(0.98); }
 
         /* Quick Task / Concept Areas */
-        .quick-task-area, .concept-area {
+        .quick-task-area, .concept-area, .data-area {
             background-color: var(--secondary-color); border-radius: var(--border-radius-md); padding: 20px;
             margin-bottom: 25px; box-shadow: var(--shadow-md); animation: slideInUp 0.5s ease;
         }
@@ -258,6 +258,9 @@
         .edit-concept-btn:hover, .edit-project-btn:hover { background-color: var(--accent-color); }
         .delete-concept-btn:hover, .delete-project-btn:hover, .delete-folder-btn:hover { background-color: var(--danger-color); }
         .delete-folder-btn { background-color: red; color: var(--offwhite); }
+        #rename-folder-btn { background-color: var(--accent-color); }
+        .data-actions { display:flex; gap:10px; margin-bottom:15px; }
+        .backup-info { font-size:0.9em; color:var(--light-text); }
         .concept-to-project-btn:hover { background-color: var(--success-color); color: var(--primary-color); }
         
         .concept-detail-title { font-size: 1.8em; } /* Specific for concept detail title */
@@ -645,6 +648,7 @@
                 <button id="quick-tasks-view-btn" class="view-btn">Quick Tasks</button>
                 <button id="projects-view-btn" class="view-btn">Projects</button>
                 <button id="concepts-view-btn" class="view-btn">Concepts</button>
+                <button id="data-view-btn" class="view-btn">Data</button>
             </div>
         </header>
 
@@ -720,7 +724,7 @@
                         <button id="list-view-btn" class="view-toggle-btn action-btn"><i class="fas fa-list"></i> List</button>
                         <button id="add-folder-btn" class="action-btn"><i class="fas fa-folder-plus"></i> Add Folder</button>
                     </div></div>
-                    <div id="folder-nav" class="folder-nav hidden"><button id="back-folder-btn" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</button><span id="current-folder-name"></span><button id="delete-folder-btn" class="action-btn delete-folder-btn"><i class="fas fa-trash"></i> Delete Folder</button></div>
+                    <div id="folder-nav" class="folder-nav hidden"><button id="back-folder-btn" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</button><span id="current-folder-name"></span><button id="rename-folder-btn" class="action-btn"><i class="fas fa-edit"></i> Rename</button><button id="delete-folder-btn" class="action-btn delete-folder-btn"><i class="fas fa-trash"></i> Delete Folder</button></div>
                     <div class="projects-filter">
                         <input type="text" id="project-search" placeholder="Search projects...">
                         <select id="project-status-filter">
@@ -792,6 +796,15 @@
 
                 <div id="tasks-list" class="tasks-list">
                     <!-- Tasks will be dynamically populated here -->
+                </div>
+                <div id="data-area" class="data-area hidden">
+                    <h3>Data Management</h3>
+                    <div class="data-actions">
+                        <button id="backup-btn" class="action-btn"><i class="fas fa-download"></i> Backup Data</button>
+                        <button id="restore-btn" class="action-btn"><i class="fas fa-upload"></i> Restore Backup</button>
+                        <input type="file" id="restore-input" accept="application/json" style="display:none">
+                    </div>
+                    <div id="last-backup-info" class="backup-info"></div>
                 </div>
             </div>
         </div>
@@ -923,6 +936,7 @@
         let currentEditingNoteId = null; 
         let projectsViewMode = 'grid';
         let notesSort = 'date';
+        let lastBackup = null;
 
         let db;
         const STORES = {
@@ -944,6 +958,7 @@
             quickTasksViewBtn: document.getElementById('quick-tasks-view-btn'),
             projectsViewBtn: document.getElementById('projects-view-btn'),
             conceptsViewBtn: document.getElementById('concepts-view-btn'),
+            dataViewBtn: document.getElementById('data-view-btn'),
             sortSelect: document.getElementById('sort-select'),
             tagFiltersContainer: document.getElementById('tag-filters'),
             projectFiltersContainer: document.getElementById('project-filters'),
@@ -954,6 +969,7 @@
             addFolderBtn: document.getElementById('add-folder-btn'),
             folderNav: document.getElementById('folder-nav'),
             backFolderBtn: document.getElementById('back-folder-btn'),
+            renameFolderBtn: document.getElementById('rename-folder-btn'),
             deleteFolderBtn: document.getElementById('delete-folder-btn'),
             currentFolderName: document.getElementById('current-folder-name'),
             newConceptBtn: document.getElementById('new-concept-btn'),
@@ -1058,7 +1074,12 @@
             quillEditorInnerContainer: document.getElementById('quill-editor-inner-container'), 
             saveEditedNoteBtn: document.getElementById('save-edited-note-btn'),
             deleteCurrentNoteBtn: document.getElementById('delete-current-note-btn'),
-            toastContainer: document.getElementById('toast-container')
+            toastContainer: document.getElementById('toast-container'),
+            dataArea: document.getElementById('data-area'),
+            backupBtn: document.getElementById('backup-btn'),
+            restoreBtn: document.getElementById('restore-btn'),
+            restoreInput: document.getElementById('restore-input'),
+            lastBackupInfo: document.getElementById('last-backup-info')
         };
         const allModalCloseBtns = document.querySelectorAll('.modal .close-modal');
         const allModalCancelBtns = document.querySelectorAll('.modal .cancel-btn');
@@ -1145,8 +1166,11 @@
 
                 const settingsArray = await getAllDexie(STORES.SETTINGS);
                 settingsArray.forEach(s => {
-                    if (s.key === 'currentView') currentView = s.value; if (s.key === 'currentSort') currentSort = s.value;
-                    if (s.key === 'projectsViewMode') projectsViewMode = s.value; if (s.key === 'notesSort') notesSort = s.value;
+                    if (s.key === 'currentView') currentView = s.value;
+                    else if (s.key === 'currentSort') currentSort = s.value;
+                    else if (s.key === 'projectsViewMode') projectsViewMode = s.value;
+                    else if (s.key === 'notesSort') notesSort = s.value;
+                    else if (s.key === 'lastBackup') lastBackup = s.value;
                 });
             } catch (error) { console.error('Error loading data:', error); showToast('Error loading data.', 'error'); }
         }
@@ -1527,7 +1551,7 @@
             showToast(`Project "${truncateText(project.title,20)}" status changed to ${project.status}.`, 'success');
         }
 
-        async function addFolder() {
+async function addFolder() {
             const name = prompt('Folder name?');
             if (!name) return;
             const color = prompt('Folder color (hex)', '#4F7FFF') || '#4F7FFF';
@@ -1535,6 +1559,17 @@
             folders.push(folder);
             await addDexie(STORES.FOLDERS, folder);
             renderProjects();
+}
+
+        async function renameFolder(id) {
+            const folder = folders.find(f => f.id === id);
+            if (!folder) { showToast('Folder not found.', 'error'); return; }
+            const newName = prompt('New folder name:', folder.name);
+            if (!newName) return;
+            folder.name = newName.trim();
+            await putDexie(STORES.FOLDERS, folder);
+            renderProjects();
+            showToast('Folder renamed.', 'success');
         }
 
         async function deleteFolder(id) {
@@ -2063,9 +2098,9 @@
             renderBasedOnView(view);
         }
         function setCurrentViewUI(view) {
-            [요소.activeViewBtn, 요소.waitingViewBtn, 요소.completedViewBtn, 요소.quickTasksViewBtn, 요소.projectsViewBtn, 요소.conceptsViewBtn].forEach(btn => btn.classList.remove('active'));
+            [요소.activeViewBtn, 요소.waitingViewBtn, 요소.completedViewBtn, 요소.quickTasksViewBtn, 요소.projectsViewBtn, 요소.conceptsViewBtn, 요소.dataViewBtn].forEach(btn => btn.classList.remove('active'));
             // Hide all main content areas first
-            [요소.tasksList, 요소.quickTaskArea, 요소.conceptArea, 요소.projectsArea, 요소.projectDetailView, 요소.conceptDetailView].forEach(el => {
+            [요소.tasksList, 요소.quickTaskArea, 요소.conceptArea, 요소.projectsArea, 요소.projectDetailView, 요소.conceptDetailView, 요소.dataArea].forEach(el => {
                 if (el) el.classList.add('hidden'); // Ensure element exists before adding class
             });
             
@@ -2089,6 +2124,7 @@
                 case 'concept-detail': 요소.conceptsViewBtn.classList.add('active'); 요소.conceptDetailView.classList.remove('hidden'); break;
                 case 'projects': 요소.projectsViewBtn.classList.add('active'); 요소.projectsArea.classList.remove('hidden'); break;
                 case 'project-detail': 요소.projectsViewBtn.classList.add('active'); 요소.projectDetailView.classList.remove('hidden'); break;
+                case 'data': 요소.dataViewBtn.classList.add('active'); 요소.dataArea.classList.remove('hidden'); break;
             }
         }
         function renderBasedOnView(view) {
@@ -2099,6 +2135,7 @@
                 case 'concept-detail': /* Content rendered by openConceptDetailView */ break;
                 case 'projects': renderProjects(); break;
                 case 'project-detail': /* Content (tabs) rendered by openProjectDetail -> setActiveTab */ break;
+                case 'data': updateLastBackupInfo(); break;
             }
         }
         function setActiveTab(tabName) {
@@ -2299,6 +2336,46 @@
             if (currentView === 'project-detail' && currentProjectId) renderProjectTasks(currentProjectId);
             showToast(`${completedTaskIds.length} completed task(s) cleared.`, 'success');
         }
+
+        async function backupData() {
+            const data = await window.__collectForCloud();
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `finaflow-backup-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            lastBackup = new Date().toISOString();
+            await saveSetting('lastBackup', lastBackup);
+            updateLastBackupInfo();
+            showToast('Backup created.', 'success');
+        }
+
+        function updateLastBackupInfo() {
+            if (요소.lastBackupInfo) {
+                요소.lastBackupInfo.textContent = lastBackup ? `Last backup: ${formatDateTime(lastBackup)}` : 'No backups yet.';
+            }
+        }
+
+        async function handleRestoreFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                await window.__renderFromCloud(data);
+                showToast('Backup restored.', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to restore backup.', 'error');
+            } finally {
+                event.target.value = '';
+            }
+        }
         
         
         // --- Event Listeners Setup ---
@@ -2310,6 +2387,7 @@
             요소.quickTasksViewBtn.addEventListener('click', () => setCurrentView('quick'));
             요소.projectsViewBtn.addEventListener('click', () => setCurrentView('projects'));
             요소.conceptsViewBtn.addEventListener('click', () => setCurrentView('concepts'));
+            요소.dataViewBtn.addEventListener('click', () => setCurrentView('data'));
 
             // Sidebar
             요소.sortSelect.addEventListener('change', e => { currentSort = e.target.value; saveSetting('currentSort', currentSort); renderTasks(); });
@@ -2347,6 +2425,7 @@
             요소.backFolderBtn.addEventListener('click', () => { currentFolderId = folders.find(f=>f.id===currentFolderId)?.parentId || null; renderProjects(); });
             요소.backFolderBtn.addEventListener('dragover', e => e.preventDefault());
             요소.backFolderBtn.addEventListener('drop', e => { const pid = e.dataTransfer.getData('text/plain'); const parentId = folders.find(f=>f.id===currentFolderId)?.parentId || null; moveProjectToFolder(pid, parentId); });
+            요소.renameFolderBtn.addEventListener('click', () => { if(currentFolderId) renameFolder(currentFolderId); });
             요소.deleteFolderBtn.addEventListener('click', () => { if(currentFolderId) deleteFolder(currentFolderId); });
 
             // Project Detail View
@@ -2399,6 +2478,10 @@
             요소.closeNoteEditorBtn.addEventListener('click', closeNoteEditor);
             요소.saveEditedNoteBtn.addEventListener('click', saveEditedNote);
             요소.deleteCurrentNoteBtn.addEventListener('click', deleteCurrentNoteFromEditor);
+
+            요소.backupBtn.addEventListener('click', backupData);
+            요소.restoreBtn.addEventListener('click', () => 요소.restoreInput.click());
+            요소.restoreInput.addEventListener('change', handleRestoreFile);
 
         }
         function populateProjectSelect(selectElement) {
@@ -2457,6 +2540,7 @@
                 folders: 'id,parentId,createdAt'
             });
             window.finaDB = db;
+            window.save = () => {};
 
             window.__collectForCloud = async () => {
                 const dexie = window.finaDB;
@@ -2515,10 +2599,7 @@
             renderProjectFilters(); 
             renderManageTags();
             updateAllTaskPriorities(true);
-            if (window.startFirestoreSync && !window.__firestoreSyncStarted) {
-                window.startFirestoreSync();
-                window.__firestoreSyncStarted = true;
-            }
+            updateLastBackupInfo();
 
             console.log('Task Manager Initialized.');
             showToast('Welcome back to Task Manager!', 'info', 2000);
@@ -2581,47 +2662,6 @@
       return stateSnapshot;
   };
 })();
-</script>
-<!-- 🔄 firestore-sync.js  (inline for now) -->
-<script type="module">
-  import { initializeApp, getApps } from
-    "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
-  import {
-    getFirestore, doc, getDoc, setDoc, onSnapshot
-  } from
-    "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
-
-  /* --- public config (safe in repo) --- */
-  const firebaseConfig = {
-    apiKey: "AIzaSyDpJc3uaMtkKGw76pAW7pxrXOp2_sM5PK8",
-    authDomain: "finaflow-9bd2e.firebaseapp.com",
-    projectId: "finaflow-9bd2e",
-    messagingSenderId: "295577813119",
-    appId: "1:295577813119:web:b338e152a4d06c137cbf4a"
-  };
-
-  const firebaseApp = getApps().length
-    ? getApps()[0]
-    : initializeApp(firebaseConfig);
-
-  /* --- lazy bootstrap, called from init() once Dexie is ready --- */
-  export function startFirestoreSync () {
-    if (window.__firestoreSyncStarted) return;
-    window.__firestoreSyncStarted = true;
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const db   = getFirestore(app);
-    const ref  = doc(db, "state", "main");
-
-    getDoc(ref).then(snap => snap.exists() && window.__renderFromCloud(snap.data()));
-    onSnapshot(ref, snap => window.__renderFromCloud(snap.data()));
-
-    window.pushToCloud = async () => {
-      const data = await window.__collectForCloud();
-      return setDoc(ref, data, { merge:true });
-    };
-    window.save = window.pushToCloud;
-  }
-  window.startFirestoreSync = startFirestoreSync;
 </script>
 </body>
 </html>
