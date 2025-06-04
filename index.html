@@ -1130,6 +1130,11 @@
         function truncateText(text, maxLength) { return !text ? '' : (text.length > maxLength ? text.substring(0, maxLength) + '...' : text); }
         function capitalizeFirstLetter(string) { return !string ? '' : string.charAt(0).toUpperCase() + string.slice(1); }
         function generateId() { return Date.now().toString(36) + Math.random().toString(36).substring(2, 9); }
+        function uuid() {
+            return (window.crypto && typeof window.crypto.randomUUID === 'function')
+                ? window.crypto.randomUUID()
+                : generateId();
+        }
 
         // --- Toast Notifications ---
         function showToast(message, type = 'info', duration = 3500) {
@@ -1851,24 +1856,29 @@
                     continue;
                 }
 
-                const path = `projects/${currentProjectId}/${crypto.randomUUID()}_${file.name}`;
-                const fileRef = ref(storage, path);
+                try {
+                    const path = `projects/${currentProjectId}/${uuid()}_${file.name}`;
+                    const fileRef = ref(storage, path);
 
-                await uploadBytes(fileRef, file);
+                    await uploadBytes(fileRef, file);
 
-                const url  = await getDownloadURL(fileRef);
-                const meta = {
-                    id:        crypto.randomUUID(),
-                    projectId: currentProjectId,
-                    name:      file.name,
-                    type:      file.type,
-                    size:      file.size,
-                    url,
-                    createdAt: Date.now()
-                };
+                    const url  = await getDownloadURL(fileRef);
+                    const meta = {
+                        id:        uuid(),
+                        projectId: currentProjectId,
+                        name:      file.name,
+                        type:      file.type,
+                        size:      file.size,
+                        url,
+                        createdAt: Date.now()
+                    };
 
-                files[meta.id] = meta;
-                await addDexie(STORES.FILES, meta);
+                    files[meta.id] = meta;
+                    await addDexie(STORES.FILES, meta);
+                } catch (err) {
+                    console.error('File upload failed', err);
+                    showToast(`Failed to upload ${file.name}`, 'error');
+                }
             }
 
             renderFiles(currentProjectId);
