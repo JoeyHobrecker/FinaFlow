@@ -2028,12 +2028,17 @@
         // --- View Management ---
         let previousView = 'active';
         function setCurrentView(view) {
-            if (currentView === view && !['project-detail', 'concept-detail'].includes(view)) return;
+            if (currentView === view && !['project-detail', 'concept-detail'].includes(view)) {
+                // Ensure UI and data render even if view hasn't changed
+                setCurrentViewUI(view);
+                renderBasedOnView(view);
+                return;
+            }
 
             previousView = currentView;
             currentView = view;
             saveSetting('currentView', currentView);
-            
+
             setCurrentViewUI(view);
             renderBasedOnView(view);
         }
@@ -2566,7 +2571,6 @@
     apiKey: "AIzaSyDpJc3uaMtkKGw76pAW7pxrXOp2_sM5PK8",
     authDomain: "finaflow-9bd2e.firebaseapp.com",
     projectId: "finaflow-9bd2e",
-    storageBucket: "finaflow-9bd2e.appspot.com",
     messagingSenderId: "295577813119",
     appId: "1:295577813119:web:b338e152a4d06c137cbf4a"
   };
