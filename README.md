@@ -1,10 +1,10 @@
 # Task Manager
 
-FinaFlow is an in-browser task and project manager. Data is stored locally using IndexedDB through Dexie.js and also synced to Firebase Firestore so your tasks follow you across devices.
+FinaFlow is an in-browser task and project manager. Data is stored locally using IndexedDB through Dexie.js.
 
 Open `index.html` to access the main menu and launch the task manager interface in `finaflow.html`.
 
 ## Development
 
-All functionality lives in the two HTML files and the bundled Dexie library. Simply open the files in a modern browser. Data is saved locally and synced to Firestore whenever you hit a Save or Update button.
+All functionality lives in the single HTML file and the bundled Dexie library. Simply open the file in a modern browser. Use the **Data** view to create JSON backups or restore from them.
 
