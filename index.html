@@ -182,7 +182,7 @@
         #add-task-btn { background-color: var(--accent-color); }
         #quick-add-btn { background-color: var(--success-color); color: var(--primary-color); }
         #new-project-btn { background-color: var(--lavender); color: var(--primary-color); }
-        #new-concept-btn { background-color: #d08770; } /* Nord orange */
+        #new-concept-btn, #add-folder-btn { background-color: #d08770; } /* Nord orange */
         #clear-completed-btn { background-color: var(--danger-color); margin-left: auto; }
         .action-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: var(--shadow-sm); filter: brightness(1.1); }
         .action-btn:active { transform: scale(0.98); }
@@ -256,7 +256,7 @@
             font-size: 14px; gap: 6px;
         }
         .edit-concept-btn:hover, .edit-project-btn:hover { background-color: var(--accent-color); }
-        .delete-concept-btn:hover, .delete-project-btn:hover { background-color: var(--danger-color); }
+        .delete-concept-btn:hover, .delete-project-btn:hover, .delete-folder-btn:hover { background-color: var(--danger-color); }
         .concept-to-project-btn:hover { background-color: var(--success-color); color: var(--primary-color); }
         
         .concept-detail-title { font-size: 1.8em; } /* Specific for concept detail title */
@@ -737,7 +737,7 @@
                         <button id="list-view-btn" class="view-toggle-btn action-btn"><i class="fas fa-list"></i> List</button>
                         <button id="add-folder-btn" class="action-btn"><i class="fas fa-folder-plus"></i> Add Folder</button>
                     </div></div>
-                    <div id="folder-nav" class="folder-nav hidden"><button id="back-folder-btn" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</button><span id="current-folder-name"></span></div>
+                    <div id="folder-nav" class="folder-nav hidden"><button id="back-folder-btn" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</button><span id="current-folder-name"></span><button id="delete-folder-btn" class="action-btn delete-folder-btn"><i class="fas fa-trash"></i> Delete Folder</button></div>
                     <div class="projects-filter">
                         <input type="text" id="project-search" placeholder="Search projects...">
                         <select id="project-status-filter">
@@ -977,6 +977,7 @@
             addFolderBtn: document.getElementById('add-folder-btn'),
             folderNav: document.getElementById('folder-nav'),
             backFolderBtn: document.getElementById('back-folder-btn'),
+            deleteFolderBtn: document.getElementById('delete-folder-btn'),
             currentFolderName: document.getElementById('current-folder-name'),
             newConceptBtn: document.getElementById('new-concept-btn'),
             clearCompletedBtn: document.getElementById('clear-completed-btn'),
@@ -1551,6 +1552,35 @@
             folders.push(folder);
             await addDexie(STORES.FOLDERS, folder);
             renderProjects();
+        }
+
+        async function deleteFolder(id) {
+            const folderToDelete = folders.find(f => f.id === id);
+            if (!folderToDelete) { showToast('Folder not found.', 'error'); return; }
+            if (!confirm('Delete this folder? Projects and subfolders will move up one level.')) return;
+
+            const parentId = folderToDelete.parentId || null;
+
+            const projectsToMove = projects.filter(p => p.folderId === id);
+            for (const proj of projectsToMove) {
+                proj.folderId = parentId;
+                proj.updatedAt = new Date().toISOString();
+                await putDexie(STORES.PROJECTS, proj);
+            }
+
+            const subFolders = folders.filter(f => f.parentId === id);
+            for (const sf of subFolders) {
+                sf.parentId = parentId;
+                await putDexie(STORES.FOLDERS, sf);
+            }
+
+            folders = folders.filter(f => f.id !== id);
+            await deleteDexieItem(STORES.FOLDERS, id);
+
+            if (currentFolderId === id) currentFolderId = parentId;
+
+            renderProjects();
+            showToast('Folder deleted.', 'success');
         }
 
         async function moveProjectToFolder(projectId, folderId) {
@@ -2431,6 +2461,9 @@
             요소.projectStatusFilter.addEventListener('change', renderProjects);
             요소.addFolderBtn.addEventListener('click', () => addFolder());
             요소.backFolderBtn.addEventListener('click', () => { currentFolderId = folders.find(f=>f.id===currentFolderId)?.parentId || null; renderProjects(); });
+            요소.backFolderBtn.addEventListener('dragover', e => e.preventDefault());
+            요소.backFolderBtn.addEventListener('drop', e => { const pid = e.dataTransfer.getData('text/plain'); const parentId = folders.find(f=>f.id===currentFolderId)?.parentId || null; moveProjectToFolder(pid, parentId); });
+            요소.deleteFolderBtn.addEventListener('click', () => { if(currentFolderId) deleteFolder(currentFolderId); });
 
             // Project Detail View
             요소.backToProjectsBtn.addEventListener('click', () => setCurrentView('projects'));
