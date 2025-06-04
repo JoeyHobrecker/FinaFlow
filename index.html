@@ -300,14 +300,14 @@
         .overview-section h3::before { display: none; } /* Remove sidebar-style accent */
         #project-description { font-size: 1em; line-height: 1.7; white-space: pre-wrap; color: var(--light-text); }
         
-        .project-tasks-header, .project-notes-header, .project-files-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-        .add-project-task-btn, .add-note-btn, .file-upload-label { /* Shared style for add buttons in tabs */
+        .project-tasks-header, .project-notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .add-project-task-btn, .add-note-btn { /* Shared style for add buttons in tabs */
             background-color: var(--accent-color); color: var(--offwhite); padding: 9px 15px;
             border-radius: var(--border-radius-sm); font-size: 0.9em; gap: 6px;
         }
         #add-project-task-btn { background-color: var(--success-color); color: var(--primary-color); }
         #add-note-btn { background-color: var(--success-color); color: var(--primary-color); }
-        .add-project-task-btn:hover, .add-note-btn:hover, .file-upload-label:hover { filter: brightness(1.15); transform: translateY(-2px); }
+        .add-project-task-btn:hover, .add-note-btn:hover { filter: brightness(1.15); transform: translateY(-2px); }
         
         .project-tasks-list { display: flex; flex-direction: column; gap: 12px; }
         .project-task-item {
@@ -440,22 +440,6 @@
         #save-edited-note-btn { background-color: var(--success-color); color: var(--primary-color); }
         /* #edit-note-btn-overlay (if used) */
 
-        /* Project Files */
-        .file-upload-input { display:none; } /* Hide default input */
-        .files-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .file-item {
-            background-color: var(--primary-color); border-radius: var(--border-radius-sm); padding: 15px;
-            display: flex; flex-direction: column; align-items:center; text-align:center;
-            transition: var(--transition-std); box-shadow:var(--shadow-sm); border: 1px solid var(--border-color);
-        }
-        .file-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--accent-color); }
-        .file-icon { font-size: 2.5em; margin-bottom: 10px; color: var(--accent-color); }
-        .file-name { font-size: 0.9em; font-weight: 500; margin-bottom: 8px; word-break: break-all; line-height:1.3; max-height:2.6em; overflow:hidden;}
-        .file-info { font-size:0.75em; color: var(--light-text); margin-bottom:12px; }
-        .file-actions { display: flex; justify-content: center; gap: 8px; margin-top: auto; }
-        .file-action-btn { background-color: var(--secondary-color); padding: 6px 10px; border-radius: 4px; font-size: 0.8em; gap: 4px; }
-        .file-action-btn.download-btn:hover { background-color: var(--accent-color); }
-        .file-action-btn.delete-btn:hover { background-color: var(--danger-color); }
 
         /* Main Tasks List */
         .tasks-list { display: flex; flex-direction: column; gap: 20px; }
@@ -604,8 +588,6 @@
             .modal-content { width: 95%; max-height: 85vh; }
             .project-detail-main { flex-direction:column; } .project-detail-image {max-width:none;}
             .project-detail-tabs { font-size:0.9em; } .tab-btn {padding:10px 15px;}
-            .files-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-            .file-item {padding:12px;} .file-icon {font-size:2em;}
         }
 
         /* Folder Cards */
@@ -778,7 +760,6 @@
                             <button id="overview-tab" class="tab-btn active">Overview</button>
                             <button id="tasks-tab" class="tab-btn">Tasks</button>
                             <button id="notes-tab" class="tab-btn">Notes</button>
-                            <button id="files-tab" class="tab-btn">Files</button>
                         </div>
                         <div id="overview-content" class="tab-content"><div class="overview-section"><h3>Project Description</h3><p id="project-description"></p></div></div>
                         <div id="tasks-content" class="tab-content hidden">
@@ -789,10 +770,6 @@
                             <div class="project-notes-header"><h3>Project Notes</h3><div class="notes-sort-container"><select id="notes-sort-select"><option value="date">Date</option><option value="title">Title</option></select></div><button id="add-note-btn" class="action-btn"><i class="fas fa-plus"></i> Add Note</button></div>
                             <div class="notes-filter-container"><div id="note-tag-filters" class="tag-filters note-tag-filters"></div></div>
                             <div id="notes-grid" class="notes-grid"></div>
-                        </div>
-                        <div id="files-content" class="tab-content hidden">
-                            <div class="project-files-header"><h3>Project Files</h3><label for="file-upload" class="file-upload-label action-btn"><i class="fas fa-upload"></i> Upload File</label><input type="file" id="file-upload" class="file-upload-input" multiple></div>
-                            <div id="files-list" class="files-list"></div>
                         </div>
                     </div>
                 </div>
@@ -933,7 +910,6 @@
         let projects = [];
         let concepts = [];
         let notes = [];
-        let files = {};
         let folders = [];
         let currentFolderId = null;
         
@@ -952,7 +928,7 @@
         const STORES = {
             TASKS: 'tasks', QUICK_TASKS: 'quickTasks', TAGS: 'tags',
             PROJECTS: 'projects', CONCEPTS: 'concepts', NOTES: 'notes',
-            FILES: 'files', SETTINGS: 'settings', FOLDERS: 'folders'
+            SETTINGS: 'settings', FOLDERS: 'folders'
         };
 
         window.finaDB = null;
@@ -1021,20 +997,15 @@
             overviewTab: document.getElementById('overview-tab'),
             tasksTab: document.getElementById('tasks-tab'),
             notesTab: document.getElementById('notes-tab'),
-            filesTab: document.getElementById('files-tab'),
             overviewContent: document.getElementById('overview-content'),
             tasksContent: document.getElementById('tasks-content'),
             notesContent: document.getElementById('notes-content'),
-            filesContent: document.getElementById('files-content'),
             addProjectTaskBtn: document.getElementById('add-project-task-btn'),
             projectTasksList: document.getElementById('project-tasks-list'),
             addNoteBtn: document.getElementById('add-note-btn'),
             notesSortSelect: document.getElementById('notes-sort-select'),
             noteTagFiltersContainer: document.getElementById('note-tag-filters'),
             notesGrid: document.getElementById('notes-grid'),
-            fileUploadInput: document.getElementById('file-upload'),
-            fileUploadLabel: document.querySelector('.file-upload-label'),
-            filesListContainer: document.getElementById('files-list'),
             addTaskModal: document.getElementById('add-task-modal'),
             editTaskModal: document.getElementById('edit-task-modal'),
             addProjectModal: document.getElementById('add-project-modal'),
@@ -1162,9 +1133,6 @@
                     getAllDexie(STORES.FOLDERS)
                 ]);
                 const tagObjects = await getAllDexie(STORES.TAGS) || []; tags = tagObjects.map(t => t.tag).sort();
-                const fileObjects = await getAllDexie(STORES.FILES) || []; 
-                files = {}; 
-                fileObjects.forEach(f => files[f.id] = f);
 
                 const settingsArray = await getAllDexie(STORES.SETTINGS);
                 settingsArray.forEach(s => {
@@ -1643,7 +1611,7 @@
             요소.projectDetailDescription.textContent = project.description || 'No description provided.';
         }
         async function deleteProject(id, fromModal = false) {
-            if (!confirm("Are you sure you want to delete this project? All associated tasks, notes, and files will also be deleted.")) return;
+            if (!confirm("Are you sure you want to delete this project? All associated tasks and notes will also be deleted.")) return;
             
             projects = projects.filter(p => p.id !== id);
             await deleteDexieItem(STORES.PROJECTS, id);
@@ -1656,9 +1624,6 @@
             notes = notes.filter(n => n.projectId !== id);
             if (notesToDelete.length > 0) await db.table(STORES.NOTES).bulkDelete(notesToDelete);
 
-            const filesToDeleteIds = Object.values(files).filter(f => f.projectId === id).map(f => f.id);
-            filesToDeleteIds.forEach(fileId => delete files[fileId]); 
-            if (filesToDeleteIds.length > 0) await db.table(STORES.FILES).bulkDelete(filesToDeleteIds);
 
 
             showToast('Project and all associated data deleted.', 'success');
@@ -1846,119 +1811,6 @@
             renderNotes(projectId);
         }
         
-        // --- Project Detail Tabs: Files ---
-        async function handleFileUpload(fileList) {
-            if (!currentProjectId || !fileList.length) return;
-
-            for (const file of fileList) {
-                if (file.size > 25 * 1024 * 1024) {
-                    showToast(`${file.name} is too large`, "warning");
-                    continue;
-                }
-
-                try {
-                    const path = `projects/${currentProjectId}/${uuid()}_${file.name}`;
-                    const { storage, ref, uploadBytes, getDownloadURL } = window.firebaseStorageOps || {};
-                    const fileRef = ref(storage, path);
-
-                    await uploadBytes(fileRef, file);
-
-                    const url  = await getDownloadURL(fileRef);
-                    const meta = {
-                        id:        uuid(),
-                        projectId: currentProjectId,
-                        name:      file.name,
-                        type:      file.type,
-                        size:      file.size,
-                        url,
-                        createdAt: Date.now()
-                    };
-
-                    files[meta.id] = meta;
-                    await addDexie(STORES.FILES, meta);
-                } catch (err) {
-                    console.error('File upload failed', err);
-                    showToast(`Failed to upload ${file.name}`, 'error');
-                }
-            }
-
-            renderFiles(currentProjectId);
-            if (window.pushToCloud) await window.pushToCloud();
-            요소.fileUploadInput.value = "";
-        }
-        function readFileAsDataURL(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
-            });
-        }
-        function renderFiles(projectId) {
-            요소.filesListContainer.innerHTML = '';
-            const projectFiles = Object.values(files).filter(f => f.projectId === projectId)
-                                 .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-            if (projectFiles.length === 0) {
-                요소.filesListContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><i class="far fa-file-alt"></i><p>No files attached to this project yet.</p></div>`; return;
-            }
-            projectFiles.forEach((file, i) => 요소.filesListContainer.appendChild(createFileItemElement(file, i)));
-        }
-        function getFileIconClass(fileType) {
-            if (!fileType) return 'fa-file';
-            if (fileType.startsWith('image/')) return 'fa-file-image';
-            if (fileType.startsWith('audio/')) return 'fa-file-audio';
-            if (fileType.startsWith('video/')) return 'fa-file-video';
-            if (fileType === 'application/pdf') return 'fa-file-pdf';
-            if (fileType.includes('wordprocessingml') || fileType === 'application/msword') return 'fa-file-word';
-            if (fileType.includes('spreadsheetml') || fileType === 'application/vnd.ms-excel') return 'fa-file-excel';
-            if (fileType.includes('presentationml') || fileType === 'application/vnd.ms-powerpoint') return 'fa-file-powerpoint';
-            if (fileType === 'text/plain') return 'fa-file-alt';
-            if (fileType.includes('zip') || fileType.includes('archive')) return 'fa-file-archive';
-            return 'fa-file';
-        }
-        function createFileItemElement(file, index) {
-            const el = document.createElement('div');
-            el.className = 'file-item';
-            el.dataset.id = file.id;
-            el.style.animationDelay = `${index * 0.03}s`;
-            el.innerHTML = `
-                <div class="file-icon"><i class="fas ${getFileIconClass(file.type)}"></i></div>
-                <div class="file-name" title="${file.name}">${truncateText(file.name, 25)}</div>
-                <div class="file-info">${formatFileSize(file.size)}</div>
-                <div class="file-actions">
-                    <button class="file-action-btn download-btn action-btn" title="Download"><i class="fas fa-download"></i></button>
-                    <button class="file-action-btn delete-btn action-btn" title="Delete"><i class="fas fa-trash"></i></button>
-                </div>`;
-            el.querySelector('.download-btn').addEventListener('click', () => downloadFile(file));
-            el.querySelector('.delete-btn').addEventListener('click', () => deleteFile(file));
-            return el;
-        }
-        function downloadFile(meta) {
-            if (!meta) { showToast("File not found.", "error"); return; }
-            const a = document.createElement('a');
-            a.href = meta.url;
-            a.download = meta.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-        async function deleteFile(meta) {
-            const { storage, ref, deleteObject } = window.firebaseStorageOps || {};
-            await deleteObject(ref(storage, meta.url));
-            await deleteDexieItem(STORES.FILES, meta.id);
-            if (window.pushToCloud) await window.pushToCloud();
-            delete files[meta.id];
-            renderFiles(currentProjectId);
-            showToast('File deleted.', 'success');
-        }
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
 
         // --- Modal Handling ---
         function openModal(modalEl) { 
@@ -2225,8 +2077,8 @@
             }
         }
         function setActiveTab(tabName) {
-            [요소.overviewTab, 요소.tasksTab, 요소.notesTab, 요소.filesTab].forEach(tab => tab.classList.remove('active'));
-            [요소.overviewContent, 요소.tasksContent, 요소.notesContent, 요소.filesContent].forEach(content => content.classList.add('hidden'));
+            [요소.overviewTab, 요소.tasksTab, 요소.notesTab].forEach(tab => tab.classList.remove('active'));
+            [요소.overviewContent, 요소.tasksContent, 요소.notesContent].forEach(content => content.classList.add('hidden'));
 
             switch (tabName) {
                 case 'overview': 
@@ -2245,11 +2097,6 @@
                     요소.notesTab.classList.add('active'); 
                     요소.notesContent.classList.remove('hidden'); 
                     if(currentProjectId) { renderNotes(currentProjectId); renderNoteTagFilters(currentProjectId); }
-                    break;
-                case 'files': 
-                    요소.filesTab.classList.add('active'); 
-                    요소.filesContent.classList.remove('hidden'); 
-                    if(currentProjectId) renderFiles(currentProjectId); 
                     break;
             }
         }
@@ -2484,14 +2331,9 @@
             요소.overviewTab.addEventListener('click', () => setActiveTab('overview'));
             요소.tasksTab.addEventListener('click', () => setActiveTab('tasks'));
             요소.notesTab.addEventListener('click', () => setActiveTab('notes'));
-            요소.filesTab.addEventListener('click', () => setActiveTab('files'));
             요소.addProjectTaskBtn.addEventListener('click', () => { if(currentProjectId) openAddTaskModal(currentProjectId); });
             요소.addNoteBtn.addEventListener('click', () => { if(currentProjectId) openAddNoteModal(currentProjectId); });
             요소.notesSortSelect.addEventListener('change', () => { notesSort = 요소.notesSortSelect.value; saveSetting('notesSort', notesSort); if (currentProjectId) renderNotes(currentProjectId); });
-            요소.fileUploadInput.addEventListener('change', (e) => handleFileUpload(Array.from(e.target.files)));
-            요소.fileUploadLabel.addEventListener('dragover', (e) => { e.preventDefault(); 요소.fileUploadLabel.style.backgroundColor = 'var(--border-color)'; });
-            요소.fileUploadLabel.addEventListener('dragleave', (e) => { 요소.fileUploadLabel.style.backgroundColor = 'var(--input-bg-color)'; });
-            요소.fileUploadLabel.addEventListener('drop', (e) => { e.preventDefault(); 요소.fileUploadLabel.style.backgroundColor = 'var(--input-bg-color)'; handleFileUpload(Array.from(e.dataTransfer.files));});
 
 
             // Modals General
@@ -2586,7 +2428,6 @@
                 projects: 'id, status, title, deadline, createdAt',
                 concepts: 'id, createdAt, title, updatedAt',
                 notes: 'id, projectId, *tags, updatedAt, title, createdAt',
-                files: 'id, projectId, createdAt',
                 settings: 'key',
                 folders: 'id,parentId,createdAt'
             });
@@ -2695,7 +2536,6 @@
           projects: typeof window.projects !== 'undefined' ? window.projects : 'N/A',
           concepts: typeof window.concepts !== 'undefined' ? window.concepts : 'N/A',
           notes: typeof window.notes !== 'undefined' ? window.notes : 'N/A',
-          files: typeof window.files !== 'undefined' ? window.files : 'N/A',
           currentView: typeof window.currentView !== 'undefined' ? window.currentView : 'N/A',
           currentSort: typeof window.currentSort !== 'undefined' ? window.currentSort : 'N/A',
           activeFilters: typeof window.activeFilters !== 'undefined' ? window.activeFilters : 'N/A',
@@ -2720,10 +2560,6 @@
     getFirestore, doc, getDoc, setDoc, onSnapshot
   } from
     "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
-  import {
-    getStorage, ref,
-    uploadBytes, getDownloadURL, deleteObject
-  } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-storage.js";
 
   /* --- public config (safe in repo) --- */
   const firebaseConfig = {
@@ -2738,16 +2574,6 @@
   const firebaseApp = getApps().length
     ? getApps()[0]
     : initializeApp(firebaseConfig);
-  const storage = getStorage(firebaseApp);
-
-  // Expose storage utilities globally for non-module scripts
-  window.firebaseStorageOps = {
-    storage,
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject
-  };
 
   /* --- lazy bootstrap, called from init() once Dexie is ready --- */
   export function startFirestoreSync () {
