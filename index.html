@@ -123,7 +123,7 @@
         }
 
         /* Main Layout */
-        .main-content { display: grid; grid-template-columns: 300px 1fr; gap: 30px; animation: fadeIn 0.5s ease 0.1s both; }
+        .main-content { display: grid; grid-template-columns: 300px 1fr 250px; gap: 30px; animation: fadeIn 0.5s ease 0.1s both; }
 
         /* Sidebar */
         .sidebar {
@@ -135,6 +135,7 @@
             animation: slideInUp 0.5s ease;
             transition: var(--transition-std);
         }
+        .weekly-sidebar { padding:20px; position:sticky; top:20px; }
         .sidebar.hidden { display:none; } /* For hiding sidebar in detail views */
 
         .sidebar h3 { font-size: 1.1em; margin-bottom: 15px; color: var(--offwhite); padding-left: 15px; position: relative; }
@@ -184,6 +185,9 @@
         #new-project-btn { background-color: var(--lavender); color: var(--primary-color); }
         #new-concept-btn, #add-folder-btn { background-color: #d08770; } /* Nord orange */
         #clear-completed-btn { background-color: var(--danger-color); margin-left: auto; }
+        #add-weekly-task-btn { background-color: var(--mint); color: var(--primary-color); }
+        #backup-btn { background-color: var(--accent-color); }
+        #restore-btn { background-color: var(--warning-color); color: var(--primary-color); }
         .action-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: var(--shadow-sm); filter: brightness(1.1); }
         .action-btn:active { transform: scale(0.98); }
 
@@ -584,9 +588,10 @@
         .toast.toast-warning { border-left-color: var(--warning-color); } .toast.toast-warning .toast-icon { color: var(--warning-color); }
 
         /* Responsive */
-        @media (max-width: 900px) { 
-            .main-content { grid-template-columns: 1fr; } 
-            .sidebar { order: 1; margin-top:20px; } 
+        @media (max-width: 900px) {
+            .main-content { grid-template-columns: 1fr; }
+            .sidebar { order: 1; margin-top:20px; }
+            .weekly-sidebar { display:none; }
             .main-content.sidebar-hidden .task-container { grid-column: 1 / -1; } /* Ensure full width when sidebar is programmatically hidden */
 
         }
@@ -824,6 +829,10 @@
                     </div>
                     <div id="last-backup-info" class="backup-info"></div>
                 </div>
+                <div id="weekly-sidebar" class="sidebar weekly-sidebar">
+                    <h3>Weekly Tasks</h3>
+                    <div id="weekly-sidebar-list" class="weekly-tasks-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -911,6 +920,24 @@
             <div class="form-group"><label for="note-content">Content</label><textarea id="note-content" class="note-textarea" placeholder="Start writing your note..."></textarea></div>
             <div class="form-group"><label for="note-tags">Tags (Comma separated)</label><input type="text" id="note-tags" placeholder="e.g. meeting, idea"></div>
             <div class="form-actions"><button type="button" id="cancel-note-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add Note</button></div>
+        </form></div>
+    </div></div>
+
+    <div id="add-weekly-task-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Add Weekly Task</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="weekly-task-form">
+            <div class="form-group"><label for="weekly-task-title">Title</label><input type="text" id="weekly-task-title" required></div>
+            <div class="form-group"><label for="weekly-task-minutes">Target Minutes</label><input type="number" id="weekly-task-minutes" required></div>
+            <div class="form-actions"><button type="button" id="cancel-weekly-task-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add Weekly Task</button></div>
+        </form></div>
+    </div></div>
+    <div id="edit-weekly-task-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Edit Weekly Task</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="edit-weekly-task-form">
+            <input type="hidden" id="edit-weekly-id">
+            <div class="form-group"><label for="edit-weekly-task-title">Title</label><input type="text" id="edit-weekly-task-title" required></div>
+            <div class="form-group"><label for="edit-weekly-task-minutes">Target Minutes</label><input type="number" id="edit-weekly-task-minutes" required></div>
+            <div class="form-actions"><button type="button" id="delete-weekly-task-btn" class="delete-btn">Delete</button><button type="button" id="cancel-edit-weekly-btn" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save Changes</button></div>
         </form></div>
     </div></div>
     
@@ -1105,7 +1132,21 @@
             backupBtn: document.getElementById('backup-btn'),
             restoreBtn: document.getElementById('restore-btn'),
             restoreInput: document.getElementById('restore-input'),
-            lastBackupInfo: document.getElementById('last-backup-info')
+            lastBackupInfo: document.getElementById('last-backup-info'),
+            addWeeklyTaskModal: document.getElementById('add-weekly-task-modal'),
+            editWeeklyTaskModal: document.getElementById('edit-weekly-task-modal'),
+            weeklyTaskForm: document.getElementById('weekly-task-form'),
+            weeklyTaskTitleInput: document.getElementById('weekly-task-title'),
+            weeklyTaskMinutesInput: document.getElementById('weekly-task-minutes'),
+            cancelWeeklyTaskBtn: document.getElementById('cancel-weekly-task-btn'),
+            editWeeklyTaskForm: document.getElementById('edit-weekly-task-form'),
+            editWeeklyIdInput: document.getElementById('edit-weekly-id'),
+            editWeeklyTaskTitleInput: document.getElementById('edit-weekly-task-title'),
+            editWeeklyTaskMinutesInput: document.getElementById('edit-weekly-task-minutes'),
+            deleteWeeklyTaskBtn: document.getElementById('delete-weekly-task-btn'),
+            cancelEditWeeklyTaskBtn: document.getElementById('cancel-edit-weekly-btn'),
+            weeklySidebarList: document.getElementById('weekly-sidebar-list'),
+            weeklySidebar: document.getElementById('weekly-sidebar')
         };
         const allModalCloseBtns = document.querySelectorAll('.modal .close-modal');
         const allModalCancelBtns = document.querySelectorAll('.modal .cancel-btn');
@@ -1247,8 +1288,8 @@
             let dlScore = 0;
             if (task.deadline) {
                 const days = Math.floor((new Date(task.deadline) - new Date()) / (1000*60*60*24));
-                if (days < 0) dlScore = 6; else if (days === 0) dlScore = 5; else if (days <= 1) dlScore = 4;
-                else if (days <= 3) dlScore = 3; else if (days <= 7) dlScore = 2; else dlScore = 1;
+                if (days <= 3) return 10000 + (impW * 30) + (task.projectId ? 5 : 0);
+                else if (days <= 7) dlScore = 2; else dlScore = 1;
             }
             return (impW * 30) + (dlScore * 20) + (task.projectId ? 5 : 0);
         }
@@ -1662,14 +1703,20 @@ async function renameFolder(id) {
 
         function renderWeeklyTasks() {
             요소.weeklyTasksList.innerHTML = '';
+            if (요소.weeklySidebarList) 요소.weeklySidebarList.innerHTML = '';
             if (weeklyTasks.length === 0) {
                 요소.weeklyTasksList.innerHTML = '<div class="empty-state"><p>No weekly tasks.</p></div>';
+                if (요소.weeklySidebarList) 요소.weeklySidebarList.innerHTML = '<div class="empty-state"><p>No weekly tasks.</p></div>';
                 return;
             }
-            weeklyTasks.forEach(task => 요소.weeklyTasksList.appendChild(createWeeklyTaskElement(task)));
+            weeklyTasks.forEach(task => {
+                요소.weeklyTasksList.appendChild(createWeeklyTaskElement(task));
+                if (요소.weeklySidebarList) 요소.weeklySidebarList.appendChild(createWeeklyTaskElement(task));
+            });
         }
         function createWeeklyTaskElement(task) {
             const log = ensureCurrentWeekLog(task.id);
+            if(!log.completed && log.minutes >= task.targetMinutes) { log.completed = true; putDexie(STORES.WEEKLY_LOGS, log); }
             const el = document.createElement('div');
             const status = log.completed ? 'completed' : (log.planned ? 'planned' : 'not');
             const percent = Math.min(100, (log.minutes / task.targetMinutes) * 100);
@@ -1681,41 +1728,47 @@ async function renameFolder(id) {
                     <input type="number" class="weekly-time-input" placeholder="min">
                     <button class="task-action-btn weekly-add-time" title="Add Time" style="background-color:var(--warning-color);color:var(--primary-color);"><i class="fas fa-level-down-alt"></i></button>
                     <button class="task-action-btn weekly-plan" title="Planned" style="background-color:var(--accent-color);color:var(--primary-color);"><i class="fas fa-calendar-check"></i></button>
-                    <button class="task-action-btn weekly-complete" title="Complete" style="background-color:var(--success-color);color:var(--primary-color);"><i class="fas fa-check"></i></button>
                     <button class="task-action-btn weekly-edit" title="Edit"><i class="fas fa-edit"></i></button>
                     <button class="task-action-btn weekly-delete" title="Delete" style="background-color:var(--danger-color);color:var(--primary-color);"><i class="fas fa-trash"></i></button>
                 </div>`;
             const input = el.querySelector('.weekly-time-input');
             el.querySelector('.weekly-add-time').addEventListener('click', () => {
-                const val = parseInt(input.value,10); if (!val) return; const logObj = ensureCurrentWeekLog(task.id); logObj.minutes += val; putDexie(STORES.WEEKLY_LOGS, logObj); input.value=''; renderWeeklyTasks();
+                const val = parseInt(input.value,10); if (!val) return; const logObj = ensureCurrentWeekLog(task.id); logObj.minutes += val; if(logObj.minutes >= task.targetMinutes) logObj.completed = true; putDexie(STORES.WEEKLY_LOGS, logObj); input.value=''; renderWeeklyTasks();
             });
             el.querySelector('.weekly-plan').addEventListener('click', () => { const logObj = ensureCurrentWeekLog(task.id); logObj.planned = true; putDexie(STORES.WEEKLY_LOGS, logObj); renderWeeklyTasks(); });
-            el.querySelector('.weekly-complete').addEventListener('click', () => { const logObj = ensureCurrentWeekLog(task.id); logObj.completed = true; putDexie(STORES.WEEKLY_LOGS, logObj); renderWeeklyTasks(); });
             el.querySelector('.weekly-edit').addEventListener('click', () => editWeeklyTask(task.id));
             el.querySelector('.weekly-delete').addEventListener('click', () => deleteWeeklyTask(task.id));
             return el;
         }
-        async function addWeeklyTask() {
-            const title = prompt('Weekly task title?');
-            if (!title) return;
-            const mins = parseInt(prompt('Minutes per week?', '30'),10);
-            if (!mins) return;
-            const task = {id:generateId(), title:title.trim(), targetMinutes:mins};
-            weeklyTasks.push(task);
-            await addDexie(STORES.WEEKLY_TASKS, task);
-            ensureCurrentWeekLog(task.id);
-            renderWeeklyTasks();
+        function openAddWeeklyTaskModal() { openModal(요소.addWeeklyTaskModal); }
+        function openEditWeeklyTaskModal(id) {
+            const task = weeklyTasks.find(t=>t.id===id); if(!task) return;
+            openModal(요소.editWeeklyTaskModal);
+            요소.editWeeklyIdInput.value = task.id;
+            요소.editWeeklyTaskTitleInput.value = task.title;
+            요소.editWeeklyTaskMinutesInput.value = task.targetMinutes;
         }
-        async function editWeeklyTask(id) {
-            const task = weeklyTasks.find(t=>t.id===id);
-            if (!task) return;
-            const newTitle = prompt('Task title:', task.title) || task.title;
-            const newMins = parseInt(prompt('Minutes per week:', task.targetMinutes),10) || task.targetMinutes;
-            task.title = newTitle.trim();
-            task.targetMinutes = newMins;
-            await putDexie(STORES.WEEKLY_TASKS, task);
+        async function handleWeeklyTaskFormSubmit(isEdit=false) {
+            const title = (isEdit?요소.editWeeklyTaskTitleInput:요소.weeklyTaskTitleInput).value.trim();
+            const mins = parseInt((isEdit?요소.editWeeklyTaskMinutesInput:요소.weeklyTaskMinutesInput).value,10);
+            if(!title || !mins) { showToast('Title and minutes required','error'); return; }
+            if(isEdit) {
+                const id = 요소.editWeeklyIdInput.value;
+                const task = weeklyTasks.find(t=>t.id===id);
+                if(!task) return;
+                task.title = title;
+                task.targetMinutes = mins;
+                await putDexie(STORES.WEEKLY_TASKS, task);
+            } else {
+                const task = {id:generateId(), title, targetMinutes:mins};
+                weeklyTasks.push(task);
+                await addDexie(STORES.WEEKLY_TASKS, task);
+                ensureCurrentWeekLog(task.id);
+            }
             renderWeeklyTasks();
+            closeModal(isEdit?요소.editWeeklyTaskModal:요소.addWeeklyTaskModal);
         }
+        async function editWeeklyTask(id) { openEditWeeklyTaskModal(id); }
         async function deleteWeeklyTask(id) {
             if (!confirm('Delete this weekly task?')) return;
             weeklyTasks = weeklyTasks.filter(t=>t.id!==id);
@@ -2526,7 +2579,7 @@ async function renameFolder(id) {
             요소.newConceptBtn.addEventListener('click', () => { setCurrentView('concepts'); 요소.conceptTitleInput.focus(); });
             요소.clearCompletedBtn.addEventListener('click', clearCompletedTasks);
 
-            요소.addWeeklyTaskBtn.addEventListener('click', addWeeklyTask);
+            요소.addWeeklyTaskBtn.addEventListener('click', openAddWeeklyTaskModal);
             요소.weeklyHistoryBtn.addEventListener('click', showWeeklyHistory);
 
             // Quick Tasks
@@ -2603,6 +2656,10 @@ async function renameFolder(id) {
 
             // Note Form (Simple Add Modal)
             요소.noteForm.addEventListener('submit', e => { e.preventDefault(); handleNoteFormSubmit(요소.noteForm); });
+
+            요소.weeklyTaskForm.addEventListener('submit', e => { e.preventDefault(); handleWeeklyTaskFormSubmit(false); });
+            요소.editWeeklyTaskForm.addEventListener('submit', e => { e.preventDefault(); handleWeeklyTaskFormSubmit(true); });
+            요소.deleteWeeklyTaskBtn.addEventListener('click', () => { if(요소.editWeeklyIdInput.value) { deleteWeeklyTask(요소.editWeeklyIdInput.value); closeModal(요소.editWeeklyTaskModal); } });
 
             // Quill Note Editor
             요소.closeNoteEditorBtn.addEventListener('click', closeNoteEditor);
