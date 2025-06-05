@@ -123,7 +123,7 @@
         }
 
         /* Main Layout */
-        .main-content { display: grid; grid-template-columns: 300px 1fr 250px; gap: 30px; animation: fadeIn 0.5s ease 0.1s both; }
+        .main-content { display: grid; grid-template-columns: 300px 1fr; gap: 30px; animation: fadeIn 0.5s ease 0.1s both; }
 
         /* Sidebar */
         .sidebar {
@@ -135,7 +135,6 @@
             animation: slideInUp 0.5s ease;
             transition: var(--transition-std);
         }
-        .weekly-sidebar { padding:20px; position:sticky; top:20px; }
         .sidebar.hidden { display:none; } /* For hiding sidebar in detail views */
 
         .sidebar h3 { font-size: 1.1em; margin-bottom: 15px; color: var(--offwhite); padding-left: 15px; position: relative; }
@@ -168,6 +167,10 @@
         .manage-item:hover { transform: translateX(4px); background-color: var(--secondary-color); border-color: var(--accent-color); }
         .manage-item-remove { background: none; border: none; color: var(--danger-color); font-size: 14px; opacity: 0.8; transition: var(--transition-fast); }
         .manage-item-remove:hover { opacity: 1; transform: scale(1.1); }
+
+        .weekly-section { margin-bottom: 30px; }
+        .weekly-dots-grid { display: grid; grid-template-columns: repeat(3, 12px); gap: 6px; }
+        .weekly-dot { width: 12px; height: 12px; border-radius: 50%; }
 
         /* Task Container & Action Toolbar */
         .task-container { display: flex; flex-direction: column; gap: 25px; animation: slideInUp 0.5s ease; }
@@ -457,7 +460,7 @@
         .weekly-task-card.status-completed { border-left-color: var(--success-color); opacity:0.85; }
         .weekly-task-header { display:flex; justify-content: space-between; align-items:center; margin-bottom:8px; }
         .weekly-progress-bar { height:8px; background-color: var(--border-color); border-radius:4px; overflow:hidden; }
-        .weekly-progress-bar-inner { height:100%; background-color: var(--accent-color); width:0%; }
+        .weekly-progress-bar-inner { height:100%; background-color: var(--lavender); width:0%; }
         .weekly-input-row { display:flex; gap:8px; margin-top:8px; align-items:center; }
         .weekly-time-input { flex:1; padding:6px 10px; border-radius: var(--border-radius-sm); background-color: var(--input-bg-color); border:1px solid var(--border-color); color:var(--text-color); }
         .task-card {
@@ -591,7 +594,6 @@
         @media (max-width: 900px) {
             .main-content { grid-template-columns: 1fr; }
             .sidebar { order: 1; margin-top:20px; }
-            .weekly-sidebar { display:none; }
             .main-content.sidebar-hidden .task-container { grid-column: 1 / -1; } /* Ensure full width when sidebar is programmatically hidden */
 
         }
@@ -691,6 +693,12 @@
                     <div id="project-filters" class="project-filters tag-filters">
                         <!-- Project filters will be dynamically populated here -->
                          <div class="empty-state hidden"><p>No active projects.</p></div>
+                    </div>
+                </div>
+                <div class="weekly-section">
+                    <h3>Weekly Tasks</h3>
+                    <div id="weekly-dots-grid" class="weekly-dots-grid">
+                        <div class="empty-state hidden"><p>No weekly tasks.</p></div>
                     </div>
                 </div>
                 <div class="manage-section">
@@ -828,10 +836,6 @@
                         <input type="file" id="restore-input" accept="application/json" style="display:none">
                     </div>
                     <div id="last-backup-info" class="backup-info"></div>
-                </div>
-                <div id="weekly-sidebar" class="sidebar weekly-sidebar">
-                    <h3>Weekly Tasks</h3>
-                    <div id="weekly-sidebar-list" class="weekly-tasks-list"></div>
                 </div>
             </div>
         </div>
@@ -1145,8 +1149,7 @@
             editWeeklyTaskMinutesInput: document.getElementById('edit-weekly-task-minutes'),
             deleteWeeklyTaskBtn: document.getElementById('delete-weekly-task-btn'),
             cancelEditWeeklyTaskBtn: document.getElementById('cancel-edit-weekly-btn'),
-            weeklySidebarList: document.getElementById('weekly-sidebar-list'),
-            weeklySidebar: document.getElementById('weekly-sidebar')
+            weeklyDotsGrid: document.getElementById('weekly-dots-grid')
         };
         const allModalCloseBtns = document.querySelectorAll('.modal .close-modal');
         const allModalCancelBtns = document.querySelectorAll('.modal .cancel-btn');
@@ -1703,16 +1706,15 @@ async function renameFolder(id) {
 
         function renderWeeklyTasks() {
             요소.weeklyTasksList.innerHTML = '';
-            if (요소.weeklySidebarList) 요소.weeklySidebarList.innerHTML = '';
             if (weeklyTasks.length === 0) {
                 요소.weeklyTasksList.innerHTML = '<div class="empty-state"><p>No weekly tasks.</p></div>';
-                if (요소.weeklySidebarList) 요소.weeklySidebarList.innerHTML = '<div class="empty-state"><p>No weekly tasks.</p></div>';
+                renderWeeklyDots();
                 return;
             }
             weeklyTasks.forEach(task => {
                 요소.weeklyTasksList.appendChild(createWeeklyTaskElement(task));
-                if (요소.weeklySidebarList) 요소.weeklySidebarList.appendChild(createWeeklyTaskElement(task));
             });
+            renderWeeklyDots();
         }
         function createWeeklyTaskElement(task) {
             const log = ensureCurrentWeekLog(task.id);
@@ -1739,6 +1741,23 @@ async function renameFolder(id) {
             el.querySelector('.weekly-edit').addEventListener('click', () => editWeeklyTask(task.id));
             el.querySelector('.weekly-delete').addEventListener('click', () => deleteWeeklyTask(task.id));
             return el;
+        }
+        function renderWeeklyDots() {
+            if (!요소.weeklyDotsGrid) return;
+            요소.weeklyDotsGrid.querySelectorAll('.weekly-dot').forEach(d => d.remove());
+            const empty = 요소.weeklyDotsGrid.querySelector('.empty-state');
+            if (weeklyTasks.length === 0) {
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+            if (empty) empty.classList.add('hidden');
+            weeklyTasks.forEach(task => {
+                const log = ensureCurrentWeekLog(task.id);
+                const dot = document.createElement('div');
+                dot.className = 'weekly-dot';
+                dot.style.backgroundColor = log.completed ? 'var(--success-color)' : (log.planned ? 'var(--accent-color)' : 'var(--danger-color)');
+                요소.weeklyDotsGrid.appendChild(dot);
+            });
         }
         function openAddWeeklyTaskModal() { openModal(요소.addWeeklyTaskModal); }
         function openEditWeeklyTaskModal(id) {
