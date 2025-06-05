@@ -188,7 +188,7 @@
         .action-btn:active { transform: scale(0.98); }
 
         /* Quick Task / Concept Areas */
-        .quick-task-area, .concept-area, .data-area {
+        .quick-task-area, .concept-area, .data-area, .weekly-area {
             background-color: var(--secondary-color); border-radius: var(--border-radius-md); padding: 20px;
             margin-bottom: 25px; box-shadow: var(--shadow-md); animation: slideInUp 0.5s ease;
         }
@@ -446,6 +446,16 @@
 
         /* Main Tasks List */
         .tasks-list { display: flex; flex-direction: column; gap: 20px; }
+        .weekly-tasks-list { display: flex; flex-direction: column; gap: 16px; }
+        .weekly-task-card { background-color: var(--secondary-color); border-radius: var(--border-radius-md); padding: 15px; box-shadow: var(--shadow-md); border-left:5px solid transparent; }
+        .weekly-task-card.status-not { border-left-color: var(--danger-color); }
+        .weekly-task-card.status-planned { border-left-color: var(--accent-color); }
+        .weekly-task-card.status-completed { border-left-color: var(--success-color); opacity:0.85; }
+        .weekly-task-header { display:flex; justify-content: space-between; align-items:center; margin-bottom:8px; }
+        .weekly-progress-bar { height:8px; background-color: var(--border-color); border-radius:4px; overflow:hidden; }
+        .weekly-progress-bar-inner { height:100%; background-color: var(--accent-color); width:0%; }
+        .weekly-input-row { display:flex; gap:8px; margin-top:8px; align-items:center; }
+        .weekly-time-input { flex:1; padding:6px 10px; border-radius: var(--border-radius-sm); background-color: var(--input-bg-color); border:1px solid var(--border-color); color:var(--text-color); }
         .task-card {
             background-color: var(--secondary-color); border-radius: var(--border-radius-md); padding: 20px;
             box-shadow: var(--shadow-md); transition: box-shadow 0.3s ease, transform 0.3s ease;
@@ -645,6 +655,7 @@
                 <button id="active-view-btn" class="view-btn active">Active Tasks</button>
                 <button id="waiting-view-btn" class="view-btn">Waiting Tasks</button>
                 <button id="completed-view-btn" class="view-btn">Completed Tasks</button>
+                <button id="weekly-view-btn" class="view-btn">Weekly Tasks</button>
                 <button id="quick-tasks-view-btn" class="view-btn">Quick Tasks</button>
                 <button id="projects-view-btn" class="view-btn">Projects</button>
                 <button id="concepts-view-btn" class="view-btn">Concepts</button>
@@ -797,6 +808,13 @@
                 <div id="tasks-list" class="tasks-list">
                     <!-- Tasks will be dynamically populated here -->
                 </div>
+                <div id="weekly-area" class="weekly-area hidden">
+                    <div class="weekly-header"><h3>Weekly Tasks
+                        <button id="add-weekly-task-btn" class="action-btn"><i class="fas fa-plus"></i></button>
+                        <button id="weekly-history-btn" class="action-btn"><i class="fas fa-calendar-alt"></i></button>
+                    </h3></div>
+                    <div id="weekly-tasks-list" class="weekly-tasks-list"></div>
+                </div>
                 <div id="data-area" class="data-area hidden">
                     <h3>Data Management</h3>
                     <div class="data-actions">
@@ -924,6 +942,8 @@
         let concepts = [];
         let notes = [];
         let folders = [];
+        let weeklyTasks = [];
+        let weeklyLogs = [];
         let currentFolderId = null;
         
         let currentView = 'active';
@@ -942,7 +962,8 @@
         const STORES = {
             TASKS: 'tasks', QUICK_TASKS: 'quickTasks', TAGS: 'tags',
             PROJECTS: 'projects', CONCEPTS: 'concepts', NOTES: 'notes',
-            SETTINGS: 'settings', FOLDERS: 'folders'
+            SETTINGS: 'settings', FOLDERS: 'folders',
+            WEEKLY_TASKS: 'weeklyTasks', WEEKLY_LOGS: 'weeklyLogs'
         };
 
         window.finaDB = null;
@@ -954,7 +975,8 @@
             sidebar: document.querySelector('.sidebar'),
             activeViewBtn: document.getElementById('active-view-btn'),
             waitingViewBtn: document.getElementById('waiting-view-btn'),
-            completedViewBtn: document.getElementById('completed-view-btn'),
+           completedViewBtn: document.getElementById('completed-view-btn'),
+            weeklyViewBtn: document.getElementById('weekly-view-btn'),
             quickTasksViewBtn: document.getElementById('quick-tasks-view-btn'),
             projectsViewBtn: document.getElementById('projects-view-btn'),
             conceptsViewBtn: document.getElementById('concepts-view-btn'),
@@ -973,8 +995,12 @@
             deleteFolderBtn: document.getElementById('delete-folder-btn'),
             currentFolderName: document.getElementById('current-folder-name'),
             newConceptBtn: document.getElementById('new-concept-btn'),
-            clearCompletedBtn: document.getElementById('clear-completed-btn'),
-            tasksList: document.getElementById('tasks-list'),
+           clearCompletedBtn: document.getElementById('clear-completed-btn'),
+           tasksList: document.getElementById('tasks-list'),
+            weeklyArea: document.getElementById('weekly-area'),
+            addWeeklyTaskBtn: document.getElementById('add-weekly-task-btn'),
+            weeklyHistoryBtn: document.getElementById('weekly-history-btn'),
+            weeklyTasksList: document.getElementById('weekly-tasks-list'),
             quickTaskArea: document.getElementById('quick-task-area'),
             closeQuickTaskBtn: document.getElementById('close-quick-task-btn'),
             quickTaskInput: document.getElementById('quick-task-input'),
@@ -1154,13 +1180,35 @@
             setTimeout(removeToast, duration);
         }
 
+        function getWeekStart(date = new Date()) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff);
+            d.setHours(0,0,0,0);
+            return d.toISOString().split('T')[0];
+        }
+        function getWeeklyLog(taskId, weekStart) {
+            return weeklyLogs.find(l => l.taskId === taskId && l.weekStart === weekStart);
+        }
+        function ensureCurrentWeekLog(taskId) {
+            const weekStart = getWeekStart();
+            let log = getWeeklyLog(taskId, weekStart);
+            if (!log) {
+                log = { taskId, weekStart, minutes: 0, planned: false, completed: false };
+                weeklyLogs.push(log);
+                addDexie(STORES.WEEKLY_LOGS, log);
+            }
+            return log;
+        }
+
         // --- Data Loading & Saving ---
        async function loadDataFromDB() {
             try {
-                [tasks, quickTasks, projects, concepts, notes, folders] = await Promise.all([
+                [tasks, quickTasks, projects, concepts, notes, folders, weeklyTasks, weeklyLogs] = await Promise.all([
                     getAllDexie(STORES.TASKS), getAllDexie(STORES.QUICK_TASKS),
                     getAllDexie(STORES.PROJECTS), getAllDexie(STORES.CONCEPTS), getAllDexie(STORES.NOTES),
-                    getAllDexie(STORES.FOLDERS)
+                    getAllDexie(STORES.FOLDERS), getAllDexie(STORES.WEEKLY_TASKS), getAllDexie(STORES.WEEKLY_LOGS)
                 ]);
                 const tagObjects = await getAllDexie(STORES.TAGS) || []; tags = tagObjects.map(t => t.tag).sort();
 
@@ -1554,19 +1602,21 @@
 async function addFolder() {
             const name = prompt('Folder name?');
             if (!name) return;
-            const color = prompt('Folder color (hex)', '#4F7FFF') || '#4F7FFF';
+            const color = prompt('Folder color (name or hex)', '#4F7FFF') || '#4F7FFF';
             const folder = { id: generateId(), name, color, parentId: currentFolderId, createdAt: new Date().toISOString() };
             folders.push(folder);
             await addDexie(STORES.FOLDERS, folder);
             renderProjects();
 }
 
-        async function renameFolder(id) {
+async function renameFolder(id) {
             const folder = folders.find(f => f.id === id);
             if (!folder) { showToast('Folder not found.', 'error'); return; }
             const newName = prompt('New folder name:', folder.name);
             if (!newName) return;
             folder.name = newName.trim();
+            const newColor = prompt('Folder color (name or hex):', folder.color) || folder.color;
+            folder.color = newColor;
             await putDexie(STORES.FOLDERS, folder);
             renderProjects();
             showToast('Folder renamed.', 'success');
@@ -1608,6 +1658,80 @@ async function addFolder() {
             projects[idx].updatedAt = new Date().toISOString();
             await putDexie(STORES.PROJECTS, projects[idx]);
             renderProjects();
+        }
+
+        function renderWeeklyTasks() {
+            요소.weeklyTasksList.innerHTML = '';
+            if (weeklyTasks.length === 0) {
+                요소.weeklyTasksList.innerHTML = '<div class="empty-state"><p>No weekly tasks.</p></div>';
+                return;
+            }
+            weeklyTasks.forEach(task => 요소.weeklyTasksList.appendChild(createWeeklyTaskElement(task)));
+        }
+        function createWeeklyTaskElement(task) {
+            const log = ensureCurrentWeekLog(task.id);
+            const el = document.createElement('div');
+            const status = log.completed ? 'completed' : (log.planned ? 'planned' : 'not');
+            const percent = Math.min(100, (log.minutes / task.targetMinutes) * 100);
+            el.className = `weekly-task-card status-${status}`;
+            el.innerHTML = `
+                <div class="weekly-task-header"><span>${truncateText(task.title,40)}</span><span>${task.targetMinutes}m</span></div>
+                <div class="weekly-progress-bar"><div class="weekly-progress-bar-inner" style="width:${percent}%"></div></div>
+                <div class="weekly-input-row"><span>${log.minutes} / ${task.targetMinutes}m</span>
+                    <input type="number" class="weekly-time-input" placeholder="min">
+                    <button class="task-action-btn weekly-add-time" title="Add Time" style="background-color:var(--warning-color);color:var(--primary-color);"><i class="fas fa-level-down-alt"></i></button>
+                    <button class="task-action-btn weekly-plan" title="Planned" style="background-color:var(--accent-color);color:var(--primary-color);"><i class="fas fa-calendar-check"></i></button>
+                    <button class="task-action-btn weekly-complete" title="Complete" style="background-color:var(--success-color);color:var(--primary-color);"><i class="fas fa-check"></i></button>
+                    <button class="task-action-btn weekly-edit" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button class="task-action-btn weekly-delete" title="Delete" style="background-color:var(--danger-color);color:var(--primary-color);"><i class="fas fa-trash"></i></button>
+                </div>`;
+            const input = el.querySelector('.weekly-time-input');
+            el.querySelector('.weekly-add-time').addEventListener('click', () => {
+                const val = parseInt(input.value,10); if (!val) return; const logObj = ensureCurrentWeekLog(task.id); logObj.minutes += val; putDexie(STORES.WEEKLY_LOGS, logObj); input.value=''; renderWeeklyTasks();
+            });
+            el.querySelector('.weekly-plan').addEventListener('click', () => { const logObj = ensureCurrentWeekLog(task.id); logObj.planned = true; putDexie(STORES.WEEKLY_LOGS, logObj); renderWeeklyTasks(); });
+            el.querySelector('.weekly-complete').addEventListener('click', () => { const logObj = ensureCurrentWeekLog(task.id); logObj.completed = true; putDexie(STORES.WEEKLY_LOGS, logObj); renderWeeklyTasks(); });
+            el.querySelector('.weekly-edit').addEventListener('click', () => editWeeklyTask(task.id));
+            el.querySelector('.weekly-delete').addEventListener('click', () => deleteWeeklyTask(task.id));
+            return el;
+        }
+        async function addWeeklyTask() {
+            const title = prompt('Weekly task title?');
+            if (!title) return;
+            const mins = parseInt(prompt('Minutes per week?', '30'),10);
+            if (!mins) return;
+            const task = {id:generateId(), title:title.trim(), targetMinutes:mins};
+            weeklyTasks.push(task);
+            await addDexie(STORES.WEEKLY_TASKS, task);
+            ensureCurrentWeekLog(task.id);
+            renderWeeklyTasks();
+        }
+        async function editWeeklyTask(id) {
+            const task = weeklyTasks.find(t=>t.id===id);
+            if (!task) return;
+            const newTitle = prompt('Task title:', task.title) || task.title;
+            const newMins = parseInt(prompt('Minutes per week:', task.targetMinutes),10) || task.targetMinutes;
+            task.title = newTitle.trim();
+            task.targetMinutes = newMins;
+            await putDexie(STORES.WEEKLY_TASKS, task);
+            renderWeeklyTasks();
+        }
+        async function deleteWeeklyTask(id) {
+            if (!confirm('Delete this weekly task?')) return;
+            weeklyTasks = weeklyTasks.filter(t=>t.id!==id);
+            await deleteDexieItem(STORES.WEEKLY_TASKS, id);
+            weeklyLogs = weeklyLogs.filter(l=>l.taskId!==id);
+            await db.table(STORES.WEEKLY_LOGS).where('taskId').equals(id).delete();
+            renderWeeklyTasks();
+        }
+        function showWeeklyHistory() {
+            let msg = '';
+            weeklyTasks.forEach(task => {
+                msg += `${task.title}\n`;
+                const logs = weeklyLogs.filter(l=>l.taskId===task.id).sort((a,b)=> new Date(a.weekStart)-new Date(b.weekStart));
+                logs.forEach(l=>{ msg+=`  ${l.weekStart}: ${l.minutes}/${task.targetMinutes}m ${l.completed?'✔':''}\n`; });
+            });
+            alert(msg || 'No history');
         }
         function setProjectsViewMode(mode) {
             projectsViewMode = mode;
@@ -2098,9 +2222,9 @@ async function addFolder() {
             renderBasedOnView(view);
         }
         function setCurrentViewUI(view) {
-            [요소.activeViewBtn, 요소.waitingViewBtn, 요소.completedViewBtn, 요소.quickTasksViewBtn, 요소.projectsViewBtn, 요소.conceptsViewBtn, 요소.dataViewBtn].forEach(btn => btn.classList.remove('active'));
+            [요소.activeViewBtn, 요소.waitingViewBtn, 요소.completedViewBtn, 요소.weeklyViewBtn, 요소.quickTasksViewBtn, 요소.projectsViewBtn, 요소.conceptsViewBtn, 요소.dataViewBtn].forEach(btn => btn.classList.remove('active'));
             // Hide all main content areas first
-            [요소.tasksList, 요소.quickTaskArea, 요소.conceptArea, 요소.projectsArea, 요소.projectDetailView, 요소.conceptDetailView, 요소.dataArea].forEach(el => {
+            [요소.tasksList, 요소.quickTaskArea, 요소.conceptArea, 요소.weeklyArea, 요소.projectsArea, 요소.projectDetailView, 요소.conceptDetailView, 요소.dataArea].forEach(el => {
                 if (el) el.classList.add('hidden'); // Ensure element exists before adding class
             });
             
@@ -2119,6 +2243,7 @@ async function addFolder() {
                 case 'active': 요소.activeViewBtn.classList.add('active'); 요소.tasksList.classList.remove('hidden'); break;
                 case 'waiting': 요소.waitingViewBtn.classList.add('active'); 요소.tasksList.classList.remove('hidden'); break;
                 case 'completed': 요소.completedViewBtn.classList.add('active'); 요소.tasksList.classList.remove('hidden'); break;
+                case 'weekly': 요소.weeklyViewBtn.classList.add('active'); 요소.weeklyArea.classList.remove('hidden'); break;
                 case 'quick': 요소.quickTasksViewBtn.classList.add('active'); 요소.quickTaskArea.classList.remove('hidden'); break;
                 case 'concepts': 요소.conceptsViewBtn.classList.add('active'); 요소.conceptArea.classList.remove('hidden'); break;
                 case 'concept-detail': 요소.conceptsViewBtn.classList.add('active'); 요소.conceptDetailView.classList.remove('hidden'); break;
@@ -2131,6 +2256,7 @@ async function addFolder() {
             switch (view) {
                 case 'active': case 'waiting': case 'completed': renderTasks(); break;
                 case 'quick': renderQuickTasks(); break;
+                case 'weekly': renderWeeklyTasks(); break;
                 case 'concepts': renderConcepts(); break;
                 case 'concept-detail': /* Content rendered by openConceptDetailView */ break;
                 case 'projects': renderProjects(); break;
@@ -2384,6 +2510,7 @@ async function addFolder() {
             요소.activeViewBtn.addEventListener('click', () => setCurrentView('active'));
             요소.waitingViewBtn.addEventListener('click', () => setCurrentView('waiting'));
             요소.completedViewBtn.addEventListener('click', () => setCurrentView('completed'));
+            요소.weeklyViewBtn.addEventListener('click', () => setCurrentView('weekly'));
             요소.quickTasksViewBtn.addEventListener('click', () => setCurrentView('quick'));
             요소.projectsViewBtn.addEventListener('click', () => setCurrentView('projects'));
             요소.conceptsViewBtn.addEventListener('click', () => setCurrentView('concepts'));
@@ -2398,6 +2525,9 @@ async function addFolder() {
             요소.newProjectBtn.addEventListener('click', () => openAddProjectModal());
             요소.newConceptBtn.addEventListener('click', () => { setCurrentView('concepts'); 요소.conceptTitleInput.focus(); });
             요소.clearCompletedBtn.addEventListener('click', clearCompletedTasks);
+
+            요소.addWeeklyTaskBtn.addEventListener('click', addWeeklyTask);
+            요소.weeklyHistoryBtn.addEventListener('click', showWeeklyHistory);
 
             // Quick Tasks
             요소.quickTaskInput.addEventListener('keypress', e => { if (e.key === 'Enter' && 요소.quickTaskInput.value.trim()) addQuickTask(요소.quickTaskInput.value.trim()); });
@@ -2529,7 +2659,7 @@ async function addFolder() {
                 return;
             }
             db = new Dexie('finaTaskManager');
-            db.version(4).stores({
+            db.version(5).stores({
                 tasks: 'id, projectId, status, *tags, completed, priority, deadline, createdAt',
                 quickTasks: 'id, createdAt',
                 tags: 'tag',
@@ -2537,7 +2667,9 @@ async function addFolder() {
                 concepts: 'id, createdAt, title, updatedAt',
                 notes: 'id, projectId, *tags, updatedAt, title, createdAt',
                 settings: 'key',
-                folders: 'id,parentId,createdAt'
+                folders: 'id,parentId,createdAt',
+                weeklyTasks: 'id',
+                weeklyLogs: '[taskId+weekStart],weekStart'
             });
             window.finaDB = db;
             window.save = () => {};
@@ -2598,6 +2730,7 @@ async function addFolder() {
             renderTagFilters(); 
             renderProjectFilters(); 
             renderManageTags();
+            renderWeeklyTasks();
             updateAllTaskPriorities(true);
             updateLastBackupInfo();
 
