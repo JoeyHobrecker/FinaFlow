@@ -162,10 +162,16 @@
     
     <div id="toast-container"></div>
     <script type="module">
+        import router from 'shared/router.js';
         // This is a placeholder for the household logic.
         // It would include rendering for shopping/cleaning, handling modals,
         // and the logic for the SVG map and overdue status colors.
         console.log("Household page script loaded.");
+
+        document.getElementById('back-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            router.navigate('index.html');
+        });
         document.getElementById('add-shopping-item-btn').addEventListener('click', () => {
              alert('Add Shopping Item modal would open here.');
         });

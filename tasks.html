@@ -166,6 +166,7 @@
     <script type="module">
         import { db } from 'shared/db.js';
         import { showToast, playSound, uuid } from 'shared/app.js';
+        import router from 'shared/router.js';
         import 'shared/components/task-card.js';
         import 'shared/components/modal-dialog.js';
 
@@ -190,6 +191,11 @@
             taskForm: document.getElementById('task-form'),
             deleteTaskBtn: document.getElementById('delete-task-btn')
         };
+
+        document.getElementById('back-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            router.navigate('index.html');
+        });
         
         // --- Data Loading & Calculation ---
         async function loadData() {
@@ -255,7 +261,7 @@
                     switch (currentSort) {
                         case 'priority': return b.priority - a.priority;
                         case 'deadline':
-                            return (new Date(a.deadline) || new Date('2999-12-31')) - (new Date(b.deadline) || new Date('2999-12-31'));
+                            return new Date(a.deadline || '2999-12-31') - new Date(b.deadline || '2999-12-31');
                         case 'createdAt': return new Date(b.createdAt) - new Date(a.createdAt);
                         default: return 0;
                     }

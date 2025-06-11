@@ -121,6 +121,7 @@
     <script type="module">
         import { db } from 'shared/db.js';
         import { showToast, formatDate } from 'shared/app.js';
+        import router from 'shared/router.js';
 
         let notes = [];
         let quill;
@@ -138,6 +139,11 @@
             titleInput: document.getElementById('note-editor-title'),
             currentNoteIdInput: document.getElementById('current-note-id')
         };
+
+        document.getElementById('back-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            router.navigate('index.html');
+        });
 
         function initQuill() {
             quill = new Quill('#editor-container', {
