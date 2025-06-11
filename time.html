@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Management - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+    <style>
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .time-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 24px;
+        }
+        .timer-display {
+            font-size: 4em;
+            font-weight: 700;
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+        }
+        .pomodoro-controls, .tracker-controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        #timelog-list li {
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Time</h1>
+            </div>
+             <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+        <main>
+             <div class="tabs">
+                <button class="tab-btn active" data-view="tracker">Tracker</button>
+                <button class="tab-btn" data-view="pomodoro">Pomodoro</button>
+                <button class="tab-btn" data-view="data">Data</button>
+                <button class="tab-btn" data-view="timers">Timers</button>
+            </div>
+            
+            <!-- Time Tracker -->
+            <div id="tracker-content" class="tab-content">
+                <div class="time-layout">
+                    <div class="card">
+                        <h3>New Time Log</h3>
+                        <div class="form-group">
+                            <label for="tracker-label">Label</label>
+                            <input type="text" id="tracker-label" class="form-control" placeholder="e.g., Project Alpha Work">
+                        </div>
+                        <div class="form-group">
+                             <label for="tracker-color">Color</label>
+                             <input type="color" id="tracker-color" value="#4F7FFF" class="form-control">
+                        </div>
+                         <div class="tracker-controls">
+                            <button id="start-tracker-btn" class="btn btn-success"><i class="fas fa-play"></i> Start</button>
+                            <button id="stop-tracker-btn" class="btn btn-danger hidden"><i class="fas fa-stop"></i> Stop</button>
+                         </div>
+                         <div id="current-tracker-info" class="hidden" style="text-align:center; margin-top:16px;">
+                            <p>Currently tracking: <strong id="current-tracker-label"></strong></p>
+                            <p>Elapsed: <span id="current-tracker-elapsed">00:00:00</span></p>
+                         </div>
+                    </div>
+                     <div class="card">
+                        <h3>Today's Logs</h3>
+                        <ul id="timelog-list"></ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pomodoro Timer -->
+            <div id="pomodoro-content" class="tab-content hidden">
+                <div class="card" style="max-width:500px; margin:auto; text-align:center;">
+                    <h3 id="pomodoro-mode">Work Session</h3>
+                    <div id="pomodoro-display" class="timer-display">25:00</div>
+                     <div class="pomodoro-controls">
+                        <button id="start-pomodoro-btn" class="btn btn-success"><i class="fas fa-play"></i> Start</button>
+                        <button id="pause-pomodoro-btn" class="btn btn-secondary hidden"><i class="fas fa-pause"></i> Pause</button>
+                        <button id="reset-pomodoro-btn" class="btn btn-danger hidden"><i class="fas fa-undo"></i> Reset</button>
+                     </div>
+                     <div style="margin-top:24px;">
+                        <button id="pomodoro-settings-btn" class="btn btn-secondary"><i class="fas fa-cog"></i> Settings</button>
+                     </div>
+                </div>
+            </div>
+            
+            <!-- Data/Insights -->
+             <div id="data-content" class="tab-content hidden">
+                 <div class="card">
+                     <h3>Time Log Breakdown</h3>
+                     <canvas id="time-data-chart"></canvas>
+                 </div>
+            </div>
+            
+            <!-- Simple Timers -->
+            <div id="timers-content" class="tab-content hidden">
+                <div class="card" style="max-width:500px; margin:auto; text-align:center;">
+                    <h3>Quick Timer</h3>
+                    <div class="form-group">
+                        <label>Set duration (minutes)</label>
+                        <input type="number" id="quick-timer-minutes" class="form-control" value="10">
+                    </div>
+                    <button id="start-quick-timer-btn" class="btn btn-primary">Start Timer</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="toast-container"></div>
+    <script type="module">
+        console.log("Time page script loaded.");
+        // This would contain the full logic for time tracking, pomodoro,
+        // charts, and communication with the service worker.
+    </script>
+</body>
+</html>

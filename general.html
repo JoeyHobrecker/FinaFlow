@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General Notes - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        .note-card {
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-md);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: var(--transition-std);
+            position: relative;
+        }
+        .note-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent);
+        }
+        .note-card.pinned {
+            border: 1px solid var(--lavender);
+        }
+        .pin-icon {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            color: var(--lavender);
+        }
+        .note-title {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .note-preview {
+            flex-grow: 1;
+            font-size: 0.9em;
+            color: var(--secondary-text);
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            -webkit-box-orient: vertical;
+        }
+        .note-date {
+            font-size: 0.8em;
+            color: var(--secondary-text);
+            opacity: 0.7;
+            margin-top: 16px;
+        }
+        #note-editor-view {
+            animation: fadeIn 0.4s;
+        }
+        #editor-container {
+            background-color: var(--offwhite);
+            color: var(--charcoal);
+            border-radius: var(--border-radius-md);
+            min-height: 60vh;
+        }
+        #editor-container .ql-editor {
+            min-height: 60vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 id="page-title" class="logo-text">General Notes</h1>
+            </div>
+             <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+
+        <main>
+            <!-- Notes List View -->
+            <div id="notes-list-view">
+                <div class="page-header">
+                    <input type="search" id="notes-search" class="form-control" placeholder="Search notes..." style="max-width: 300px;">
+                    <button id="add-note-btn" class="btn btn-primary"><i class="fas fa-plus"></i> New Note</button>
+                </div>
+                <div id="notes-grid" class="notes-grid">
+                    <!-- Note cards will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Note Editor View -->
+            <div id="note-editor-view" class="hidden">
+                <div class="page-header">
+                    <button id="back-to-notes-btn" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> All Notes</button>
+                    <div style="display:flex; gap:12px;">
+                        <button id="pin-note-btn" class="btn btn-secondary"><i class="fas fa-thumbtack"></i> Pin</button>
+                        <button id="fullscreen-btn" class="btn btn-secondary"><i class="fas fa-expand"></i> Fullscreen</button>
+                        <button id="delete-note-btn" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+                <input type="hidden" id="current-note-id">
+                <input type="text" id="note-editor-title" class="form-control" placeholder="Note Title" style="font-size: 1.5em; margin-bottom: 16px;">
+                <div id="editor-container"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script type="module">
+        import { db } from '/shared/db.js';
+        import { showToast, formatDate } from '/shared/app.js';
+
+        let notes = [];
+        let quill;
+        let currentNoteId = null;
+
+        const elements = {
+            listView: document.getElementById('notes-list-view'),
+            editorView: document.getElementById('note-editor-view'),
+            grid: document.getElementById('notes-grid'),
+            addBtn: document.getElementById('add-note-btn'),
+            backBtn: document.getElementById('back-to-notes-btn'),
+            deleteBtn: document.getElementById('delete-note-btn'),
+            pinBtn: document.getElementById('pin-note-btn'),
+            fullscreenBtn: document.getElementById('fullscreen-btn'),
+            titleInput: document.getElementById('note-editor-title'),
+            currentNoteIdInput: document.getElementById('current-note-id')
+        };
+
+        function initQuill() {
+            quill = new Quill('#editor-container', {
+                theme: 'snow',
+                modules: { toolbar: [
+                    [{ 'header': [1, 2, false] }],
+                    ['bold', 'italic', 'underline'],
+                    ['link', 'blockquote', 'code-block'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+                ]}
+            });
+
+            let typingTimer;
+            quill.on('text-change', () => {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(saveCurrentNote, 1000);
+            });
+            elements.titleInput.addEventListener('input', () => {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(saveCurrentNote, 1000);
+            });
+        }
+        
+        async function loadNotes() {
+            notes = await db.notes.where('projectId').equals('').toArray(); // Only general notes
+            renderNotesGrid();
+        }
+
+        function renderNotesGrid() {
+            elements.grid.innerHTML = '';
+            const sortedNotes = notes.sort((a,b) => (b.pinned || 0) - (a.pinned || 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+            
+            if (sortedNotes.length === 0) {
+                 elements.grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><i class="fas fa-sticky-note"></i><p>No general notes yet. Create one!</p></div>`;
+                 return;
+            }
+            
+            sortedNotes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = `note-card ${note.pinned ? 'pinned' : ''}`;
+                card.dataset.id = note.id;
+                
+                const previewDiv = document.createElement('div');
+                previewDiv.innerHTML = note.content || '';
+                const previewText = previewDiv.textContent || '';
+                
+                card.innerHTML = `
+                    ${note.pinned ? '<i class="fas fa-thumbtack pin-icon"></i>' : ''}
+                    <h4 class="note-title">${note.title || 'Untitled Note'}</h4>
+                    <p class="note-preview">${previewText}</p>
+                    <span class="note-date">Updated: ${formatDate(note.updatedAt)}</span>
+                `;
+                card.addEventListener('click', () => openEditor(note.id));
+                elements.grid.appendChild(card);
+            });
+        }
+        
+        function showListView() {
+            elements.editorView.classList.add('hidden');
+            elements.listView.classList.remove('hidden');
+            document.getElementById('page-title').textContent = "General Notes";
+            currentNoteId = null;
+        }
+
+        async function openEditor(noteId) {
+            currentNoteId = noteId;
+            elements.currentNoteIdInput.value = noteId;
+            const note = notes.find(n => n.id === noteId);
+            if (!note) {
+                showToast("Note not found", "error");
+                return;
+            }
+
+            elements.titleInput.value = note.title;
+            quill.root.innerHTML = note.content || '';
+            elements.pinBtn.innerHTML = note.pinned ? '<i class="fas fa-thumbtack"></i> Unpin' : '<i class="fas fa-thumbtack"></i> Pin';
+            
+            elements.listView.classList.add('hidden');
+            elements.editorView.classList.remove('hidden');
+            document.getElementById('page-title').textContent = "Edit Note";
+        }
+        
+        async function createNewNote() {
+            const newNote = {
+                projectId: '', // General note
+                title: 'Untitled Note',
+                content: '',
+                pinned: false,
+                tags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            const id = await db.notes.add(newNote);
+            newNote.id = id;
+            notes.push(newNote);
+            openEditor(id);
+        }
+
+        async function saveCurrentNote() {
+            if (!currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note) return;
+            
+            const newTitle = elements.titleInput.value;
+            const newContent = quill.root.innerHTML;
+            
+            if (note.title === newTitle && note.content === newContent) {
+                return; // No changes
+            }
+
+            const updateData = {
+                title: newTitle,
+                content: newContent,
+                updatedAt: new Date().toISOString()
+            };
+            
+            await db.notes.update(currentNoteId, updateData);
+            Object.assign(note, updateData);
+            showToast("Note auto-saved", "info", 1500);
+            renderNotesGrid(); // Update list in the background
+        }
+        
+        async function deleteCurrentNote() {
+            if (!currentNoteId || !confirm("Delete this note permanently?")) return;
+            await db.notes.delete(currentNoteId);
+            notes = notes.filter(n => n.id !== currentNoteId);
+            showListView();
+            renderNotesGrid();
+            showToast("Note deleted", "success");
+        }
+
+        async function togglePin() {
+            if (!currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            const newPinnedState = !note.pinned;
+            await db.notes.update(currentNoteId, { pinned: newPinnedState });
+            note.pinned = newPinnedState;
+            elements.pinBtn.innerHTML = newPinnedState ? '<i class="fas fa-thumbtack"></i> Unpin' : '<i class="fas fa-thumbtack"></i> Pin';
+            showToast(newPinnedState ? "Note pinned!" : "Note unpinned.", "info");
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initQuill();
+            loadNotes();
+
+            elements.addBtn.addEventListener('click', createNewNote);
+            elements.backBtn.addEventListener('click', () => {
+                saveCurrentNote().then(() => {
+                    showListView();
+                    renderNotesGrid();
+                });
+            });
+            elements.deleteBtn.addEventListener('click', deleteCurrentNote);
+            elements.pinBtn.addEventListener('click', togglePin);
+            elements.fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    elements.editorView.requestFullscreen().catch(err => {
+                        alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Settings</h1>
+            </div>
+            <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+
+        <main class="settings-grid">
+            <!-- General Settings -->
+            <div class="card">
+                <h3>General</h3>
+                <div class="form-group">
+                    <label for="theme-select">Theme</label>
+                    <select id="theme-select" class="form-control">
+                        <option value="dark">Dark (Nord)</option>
+                        <option value="light" disabled>Light (Coming Soon)</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label>Notifications</label>
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="notifications-toggle"> Enable browser notifications
+                    </label>
+                </div>
+                 <div class="form-group">
+                    <label>Sounds</label>
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="sounds-toggle"> Enable UI sounds
+                    </label>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="card">
+                <h3>Data Management</h3>
+                <p>Export all your data to a JSON file for backup, or restore from a previous backup.</p>
+                <div style="display:flex; gap:16px; margin-top:16px;">
+                    <button id="backup-btn" class="btn btn-primary"><i class="fas fa-download"></i> Backup Now</button>
+                    <button id="restore-btn" class="btn btn-secondary"><i class="fas fa-upload"></i> Restore from File</button>
+                    <input type="file" id="restore-input" accept="application/json" class="hidden">
+                </div>
+                <p id="last-backup-info" style="margin-top:16px; font-size:0.9em; color:var(--secondary-text);"></p>
+            </div>
+            
+            <!-- Priority Formula -->
+            <div class="card">
+                <h3>Task Priority Formula</h3>
+                 <div class="form-group">
+                    <label for="priority-formula">Formula</label>
+                    <textarea id="priority-formula" class="form-control" rows="3"></textarea>
+                    <p style="font-size:0.8em; color:var(--secondary-text); margin-top:8px;">Variables: importance, deadline, project, isToday</p>
+                </div>
+                <button id="save-formula-btn" class="btn btn-primary">Save and Recalculate</button>
+                 <div style="margin-top:16px;">
+                    <h4>Preview</h4>
+                    <p id="formula-preview">Enter a task's details to see its priority score.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script type="module">
+        import { db } from '/shared/db.js';
+        import { showToast, requestNotificationPermission } from '/shared/app.js';
+        
+        const elements = {
+            themeSelect: document.getElementById('theme-select'),
+            notificationsToggle: document.getElementById('notifications-toggle'),
+            soundsToggle: document.getElementById('sounds-toggle'),
+            backupBtn: document.getElementById('backup-btn'),
+            restoreBtn: document.getElementById('restore-btn'),
+            restoreInput: document.getElementById('restore-input'),
+            lastBackupInfo: document.getElementById('last-backup-info'),
+            priorityFormula: document.getElementById('priority-formula'),
+            saveFormulaBtn: document.getElementById('save-formula-btn'),
+        };
+
+        async function loadSettings() {
+            const settings = await db.settings.toArray();
+            const getSetting = (key, def) => settings.find(s => s.key === key)?.value ?? def;
+            
+            elements.themeSelect.value = getSetting('theme', 'dark');
+            elements.notificationsToggle.checked = getSetting('notificationsEnabled', true);
+            elements.soundsToggle.checked = getSetting('soundsEnabled', true);
+            elements.priorityFormula.value = getSetting('priorityFormula', 'importance * 30 + deadline * 20 + project * 5');
+            const lastBackup = getSetting('lastBackup', null);
+            elements.lastBackupInfo.textContent = lastBackup ? `Last backup: ${new Date(lastBackup).toLocaleString()}` : 'No backups performed yet.';
+        }
+        
+        async function saveSetting(key, value) {
+            await db.settings.put({ key, value });
+        }
+        
+        async function handleBackup() {
+            showToast("Preparing backup...", "info");
+            try {
+                const tables = await db.tables.map(t => t.name);
+                const backupData = {};
+                for (const table of tables) {
+                     backupData[table] = await db[table].toArray();
+                }
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `FinaFlow-Backup-${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                await saveSetting('lastBackup', new Date().toISOString());
+                loadSettings();
+                showToast("Backup created successfully!", "success");
+            } catch(e) {
+                console.error("Backup failed", e);
+                showToast("Backup failed. See console.", "error");
+            }
+        }
+        
+        function handleRestore() {
+            if (!confirm("Restoring from a backup will overwrite all current data. Are you sure you want to continue?")) return;
+            elements.restoreInput.click();
+        }
+        
+        async function processRestoreFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            showToast("Restoring data... Please wait.", "info");
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const backupData = JSON.parse(event.target.result);
+                    await db.transaction('rw', db.tables, async () => {
+                        for(const tableName in backupData) {
+                            if (db[tableName]) {
+                                await db[tableName].clear();
+                                await db[tableName].bulkPut(backupData[tableName]);
+                            }
+                        }
+                    });
+                    showToast("Restore complete! The app will now reload.", "success");
+                    setTimeout(() => window.location.reload(), 2000);
+                } catch (err) {
+                    console.error("Restore failed", err);
+                    showToast("Invalid backup file or restore error.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        elements.themeSelect.addEventListener('change', (e) => {
+            document.documentElement.setAttribute('data-theme', e.target.value);
+            saveSetting('theme', e.target.value);
+        });
+        
+        elements.notificationsToggle.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            if (enabled && Notification.permission !== 'granted') {
+                const permission = await requestNotificationPermission();
+                if(permission !== 'granted') {
+                    e.target.checked = false;
+                    showToast("Notifications must be allowed in browser settings.", "warning");
+                    return;
+                }
+            }
+            saveSetting('notificationsEnabled', enabled);
+        });
+        
+        elements.soundsToggle.addEventListener('change', (e) => saveSetting('soundsEnabled', e.target.checked));
+        
+        elements.backupBtn.addEventListener('click', handleBackup);
+        elements.restoreBtn.addEventListener('click', handleRestore);
+        elements.restoreInput.addEventListener('change', processRestoreFile);
+
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>
