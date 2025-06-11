@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .tasks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar .form-group {
+            margin-bottom: 30px;
+        }
+        .tag-filters, .project-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .tag-filter {
+            background-color: var(--input-bg);
+            color: var(--secondary-text);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.9em;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: var(--transition-std);
+        }
+        .tag-filter:hover {
+            border-color: var(--accent);
+        }
+        .tag-filter.active {
+            background-color: var(--accent);
+            color: var(--offwhite);
+            border-color: var(--accent);
+            font-weight: 500;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--secondary-text);
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-md);
+        }
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 16px;
+            display: block;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Tasks</h1>
+            </div>
+             <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+
+        <div class="main-layout">
+            <aside class="sidebar">
+                <h3>Controls</h3>
+                <div class="form-group">
+                    <label for="sort-select">Sort Tasks By</label>
+                    <select id="sort-select" class="form-control">
+                        <option value="priority">Priority</option>
+                        <option value="deadline">Deadline</option>
+                        <option value="createdAt">Date Created</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter By Tags</label>
+                    <div id="tag-filters" class="tag-filters"></div>
+                </div>
+                 <div class="form-group">
+                    <label>Filter By Projects</label>
+                    <div id="project-filters" class="project-filters"></div>
+                </div>
+                <button id="clear-completed-btn" class="btn btn-danger" style="width: 100%;"><i class="fas fa-trash-alt"></i> Clear All Completed</button>
+            </aside>
+
+            <main class="main-content">
+                <div class="tasks-header">
+                     <div class="tabs">
+                        <button class="tab-btn active" data-view="active">Active</button>
+                        <button class="tab-btn" data-view="waiting">Waiting</button>
+                        <button class="tab-btn" data-view="completed">Completed</button>
+                        <button class="tab-btn" data-view="quick">Quick Tasks</button>
+                    </div>
+                    <button id="add-task-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Task</button>
+                </div>
+
+                <div id="tasks-container" class="tasks-container">
+                    <!-- Task Cards will be rendered here -->
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <div id="toast-container"></div>
+    
+    <!-- Add/Edit Task Modal -->
+    <modal-dialog id="task-modal" title="New Task">
+        <form id="task-form">
+            <input type="hidden" id="task-id">
+            <div class="form-group">
+                <label for="task-title">Task Title</label>
+                <input type="text" id="task-title" class="form-control" placeholder="What needs to be done?" required>
+            </div>
+            <div class="form-group">
+                <label for="task-description">Description (Optional)</label>
+                <textarea id="task-description" class="form-control" placeholder="Add more details..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="task-project">Project (Optional)</label>
+                <select id="task-project" class="form-control"><option value="">-- None --</option></select>
+            </div>
+            <div class="form-group">
+                <label for="task-tags">Tags (Comma separated)</label>
+                <input type="text" id="task-tags" class="form-control" placeholder="e.g. work, personal">
+            </div>
+            <div class="form-group">
+                <label for="task-deadline">Deadline</label>
+                <input type="date" id="task-deadline" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Importance</label>
+                <div style="display:flex; gap: 15px;">
+                    <label><input type="radio" name="importance" value="normal" checked> Normal</label>
+                    <label><input type="radio" name="importance" value="high"> High</label>
+                    <label><input type="radio" name="importance" value="super"> Super</label>
+                </div>
+            </div>
+             <div class="form-group">
+                <label>Status</label>
+                <div style="display:flex; gap: 15px;">
+                    <label><input type="radio" name="status" value="active" checked> Active</label>
+                    <label><input type="radio" name="status" value="waiting"> Waiting</label>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:30px;">
+                <button type="button" id="delete-task-btn" class="btn btn-danger hidden">Delete Task</button>
+                <div>
+                     <button type="button" class="btn btn-secondary" data-action="close">Cancel</button>
+                     <button type="submit" class="btn btn-primary">Save Task</button>
+                </div>
+            </div>
+        </form>
+    </modal-dialog>
+
+    <script type="module">
+        import { db } from '/shared/db.js';
+        import { showToast, playSound, uuid } from '/shared/app.js';
+        import '/shared/components/task-card.js';
+        import '/shared/components/modal-dialog.js';
+
+        let allTasks = [];
+        let allQuickTasks = [];
+        let allProjects = [];
+        let allTags = [];
+        let currentView = 'active';
+        let currentSort = 'priority';
+        let activeTagFilters = [];
+        let activeProjectFilters = [];
+
+        const elements = {
+            tasksContainer: document.getElementById('tasks-container'),
+            sortSelect: document.getElementById('sort-select'),
+            tagFiltersContainer: document.getElementById('tag-filters'),
+            projectFiltersContainer: document.getElementById('project-filters'),
+            tabs: document.querySelector('.tabs'),
+            addTaskBtn: document.getElementById('add-task-btn'),
+            clearCompletedBtn: document.getElementById('clear-completed-btn'),
+            taskModal: document.getElementById('task-modal'),
+            taskForm: document.getElementById('task-form'),
+            deleteTaskBtn: document.getElementById('delete-task-btn')
+        };
+        
+        // --- Data Loading & Calculation ---
+        async function loadData() {
+            [allTasks, allQuickTasks, allProjects, allTags] = await Promise.all([
+                db.tasks.toArray(),
+                db.quickTasks.toArray(),
+                db.projects.toArray(),
+                db.taskTags.toArray()
+            ]);
+            updateAllTaskPriorities(false); // Calculate priorities on load
+        }
+        
+        function calculatePriority(task) {
+            const impW = { super: 5, high: 3, normal: 1 }[task.importance || 'normal'];
+            let dlScore = 0;
+            if (task.deadline) {
+                const days = Math.floor((new Date(task.deadline) - new Date()) / (1000*60*60*24));
+                if (days < 0) return 100000; // Overdue is max priority
+                if (days <= 3) dlScore = 3;
+                else if (days <= 7) dlScore = 2; 
+                else dlScore = 1;
+            }
+            return (impW * 30) + (dlScore * 20) + (task.projectId ? 5 : 0) + (task.isToday ? 50 : 0);
+        }
+
+        function updateAllTaskPriorities(save = true) {
+            let changed = false;
+            allTasks.forEach(task => {
+                const newP = calculatePriority(task);
+                if (task.priority !== newP) {
+                    task.priority = newP;
+                    changed = true;
+                }
+            });
+            if (changed && save) db.tasks.bulkPut(allTasks);
+        }
+        
+        // --- Rendering ---
+        async function render() {
+            await loadData();
+            renderFilters();
+            renderAllTasks();
+        }
+
+        function renderAllTasks() {
+            elements.tasksContainer.innerHTML = '';
+            let itemsToRender;
+
+            if (currentView === 'quick') {
+                itemsToRender = allQuickTasks.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+            } else {
+                itemsToRender = allTasks.filter(task => {
+                    const viewMatch = 
+                        (currentView === 'active' && task.status === 'active' && !task.completed) ||
+                        (currentView === 'waiting' && task.status === 'waiting' && !task.completed) ||
+                        (currentView === 'completed' && task.completed);
+                    
+                    const tagMatch = activeTagFilters.length === 0 || (task.tags && task.tags.some(tag => activeTagFilters.includes(tag)));
+                    const projectMatch = activeProjectFilters.length === 0 || activeProjectFilters.includes(task.projectId);
+                    
+                    return viewMatch && tagMatch && projectMatch;
+                }).sort((a,b) => {
+                    switch (currentSort) {
+                        case 'priority': return b.priority - a.priority;
+                        case 'deadline':
+                            return (new Date(a.deadline) || new Date('2999-12-31')) - (new Date(b.deadline) || new Date('2999-12-31'));
+                        case 'createdAt': return new Date(b.createdAt) - new Date(a.createdAt);
+                        default: return 0;
+                    }
+                });
+            }
+
+            if (itemsToRender.length === 0) {
+                elements.tasksContainer.innerHTML = `<div class="empty-state"><i class="fas fa-check-double"></i><p>Nothing here. All clear!</p></div>`;
+                return;
+            }
+
+            itemsToRender.forEach(item => {
+                if (currentView === 'quick') {
+                    // Render quick tasks differently
+                    const el = document.createElement('div');
+                    el.className = 'card quick-task-item';
+                    el.innerHTML = `
+                        <p>${item.text}</p>
+                        <div style="margin-top:10px; display:flex; gap:10px;">
+                            <button class="btn btn-primary btn-sm process-quick-task" data-id="${item.id}">Process</button>
+                            <button class="btn btn-danger btn-sm delete-quick-task" data-id="${item.id}">Delete</button>
+                        </div>
+                    `;
+                    elements.tasksContainer.appendChild(el);
+                } else {
+                    const taskCard = document.createElement('task-card');
+                    taskCard.setData(item, allProjects.find(p => p.id === item.projectId));
+                    elements.tasksContainer.appendChild(taskCard);
+                }
+            });
+        }
+        
+        function renderFilters() {
+            // Tags
+            elements.tagFiltersContainer.innerHTML = allTags.map(tag => `
+                <button class="tag-filter ${activeTagFilters.includes(tag.name) ? 'active' : ''}" data-tag="${tag.name}">
+                    ${tag.name}
+                </button>
+            `).join('');
+
+            // Projects
+            const activeProjects = allProjects.filter(p => p.status === 'active' || p.status === 'waiting');
+            elements.projectFiltersContainer.innerHTML = activeProjects.map(p => `
+                 <button class="tag-filter ${activeProjectFilters.includes(p.id) ? 'active' : ''}" data-project-id="${p.id}">
+                    ${p.title}
+                </button>
+            `).join('');
+        }
+
+        // --- Event Handlers ---
+        elements.tabs.addEventListener('click', e => {
+            if (e.target.matches('.tab-btn')) {
+                currentView = e.target.dataset.view;
+                elements.tabs.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+                renderAllTasks();
+            }
+        });
+
+        elements.sortSelect.addEventListener('change', e => {
+            currentSort = e.target.value;
+            renderAllTasks();
+        });
+
+        elements.tagFiltersContainer.addEventListener('click', e => {
+            if (e.target.matches('.tag-filter')) {
+                const tagName = e.target.dataset.tag;
+                if (activeTagFilters.includes(tagName)) {
+                    activeTagFilters = activeTagFilters.filter(t => t !== tagName);
+                } else {
+                    activeTagFilters.push(tagName);
+                }
+                e.target.classList.toggle('active');
+                renderAllTasks();
+            }
+        });
+        
+        elements.projectFiltersContainer.addEventListener('click', e => {
+             if (e.target.matches('.tag-filter')) {
+                const projectId = e.target.dataset.projectId;
+                if (activeProjectFilters.includes(projectId)) {
+                    activeProjectFilters = activeProjectFilters.filter(p => p !== projectId);
+                } else {
+                    activeProjectFilters.push(projectId);
+                }
+                e.target.classList.toggle('active');
+                renderAllTasks();
+            }
+        });
+
+        elements.addTaskBtn.addEventListener('click', () => openTaskModal());
+        
+        elements.taskForm.addEventListener('submit', handleTaskFormSubmit);
+        
+        elements.deleteTaskBtn.addEventListener('click', async () => {
+            const taskId = document.getElementById('task-id').value;
+            if (taskId && confirm("Are you sure you want to delete this task?")) {
+                await db.tasks.delete(taskId);
+                elements.taskModal.hide();
+                showToast("Task deleted", "success");
+                render();
+            }
+        });
+
+        elements.clearCompletedBtn.addEventListener('click', async () => {
+            const completedTasks = await db.tasks.where('completed').equals(1).toArray();
+            if (completedTasks.length > 0 && confirm(`Delete ${completedTasks.length} completed tasks?`)) {
+                await db.tasks.bulkDelete(completedTasks.map(t => t.id));
+                showToast("Cleared completed tasks", "success");
+                playSound('done');
+                render();
+            }
+        });
+        
+        // Handle custom events from task cards
+        elements.tasksContainer.addEventListener('task-edit', e => openTaskModal(e.detail.id));
+        elements.tasksContainer.addEventListener('task-toggle-complete', async e => {
+            const task = await db.tasks.get(e.detail.id);
+            if (task) {
+                await db.tasks.update(task.id, { completed: !task.completed, completedAt: !task.completed ? new Date().toISOString() : null });
+                playSound('done');
+                await render(); // Full re-render to re-sort and filter
+            }
+        });
+        elements.tasksContainer.addEventListener('task-toggle-today', async e => {
+             const task = await db.tasks.get(e.detail.id);
+             if (task) {
+                const isNowToday = !task.isToday;
+                await db.tasks.update(task.id, { isToday: isNowToday });
+                showToast(isNowToday ? "Task marked for today!" : "Task removed from today", "info");
+                await render();
+             }
+        });
+        
+        // Quick task event delegation
+        elements.tasksContainer.addEventListener('click', async (e) => {
+            if (e.target.matches('.process-quick-task')) {
+                const id = e.target.dataset.id;
+                const quickTask = await db.quickTasks.get(id);
+                openTaskModal(null, { title: quickTask.text });
+                await db.quickTasks.delete(id);
+                render();
+            }
+            if (e.target.matches('.delete-quick-task')) {
+                const id = e.target.dataset.id;
+                await db.quickTasks.delete(id);
+                render();
+            }
+        });
+
+        // --- Modal Logic ---
+        function populateProjectSelect() {
+            const select = document.getElementById('task-project');
+            select.innerHTML = '<option value="">-- None --</option>';
+            allProjects.filter(p => p.status !== 'completed').forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.title}</option>`;
+            });
+        }
+        
+        async function openTaskModal(taskId = null, prefill = {}) {
+            elements.taskForm.reset();
+            document.getElementById('task-id').value = '';
+            elements.deleteTaskBtn.classList.add('hidden');
+            elements.taskModal.title = "New Task";
+            populateProjectSelect();
+
+            if (taskId) {
+                const task = await db.tasks.get(taskId);
+                if (task) {
+                    elements.taskModal.title = "Edit Task";
+                    document.getElementById('task-id').value = task.id;
+                    document.getElementById('task-title').value = task.title;
+                    document.getElementById('task-description').value = task.description || '';
+                    document.getElementById('task-project').value = task.projectId || '';
+                    document.getElementById('task-tags').value = (task.tags || []).join(', ');
+                    document.getElementById('task-deadline').value = task.deadline || '';
+                    elements.taskForm.querySelector(`input[name="importance"][value="${task.importance || 'normal'}"]`).checked = true;
+                    elements.taskForm.querySelector(`input[name="status"][value="${task.status || 'active'}"]`).checked = true;
+                    elements.deleteTaskBtn.classList.remove('hidden');
+                }
+            } else if (prefill.title) {
+                document.getElementById('task-title').value = prefill.title;
+            }
+            
+            elements.taskModal.show();
+        }
+
+        async function handleTaskFormSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const taskId = form.querySelector('#task-id').value;
+            
+            const newTags = form.querySelector('#task-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+            if(newTags.length) {
+                await db.taskTags.bulkPut(newTags.map(name => ({name, color: '#FFFFFF'}))); // Add new tags to registry
+            }
+
+            const taskData = {
+                title: form.querySelector('#task-title').value,
+                description: form.querySelector('#task-description').value,
+                projectId: form.querySelector('#task-project').value || null,
+                tags: newTags,
+                deadline: form.querySelector('#task-deadline').value || null,
+                importance: form.querySelector('input[name="importance"]:checked').value,
+                status: form.querySelector('input[name="status"]:checked').value,
+                updatedAt: new Date().toISOString()
+            };
+            
+            taskData.priority = calculatePriority(taskData);
+            
+            if (taskId) { // Update
+                await db.tasks.update(taskId, taskData);
+                showToast("Task updated!", "success");
+            } else { // Create
+                taskData.createdAt = new Date().toISOString();
+                taskData.completed = false;
+                taskData.isToday = false;
+                await db.tasks.add(taskData);
+                showToast("Task added!", "success");
+            }
+            
+            elements.taskModal.hide();
+            await render();
+            playSound('click');
+        }
+
+        document.addEventListener('DOMContentLoaded', render);
+    </script>
+</body>
+</html>
