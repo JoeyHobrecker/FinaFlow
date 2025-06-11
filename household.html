@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Household - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .shopping-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .shopping-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .shopping-item {
+            background-color: var(--tertiary-bg);
+            padding: 12px 16px;
+            border-radius: var(--border-radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .shopping-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent);
+        }
+        .shopping-item label { flex: 1; }
+        .shopping-item.done label { text-decoration: line-through; opacity: 0.6; }
+        .item-tag {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            color: var(--primary-bg);
+        }
+        .cleaning-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+        }
+        .cleaning-map-container {
+            padding: 16px;
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-md);
+        }
+        #cleaning-map {
+            width: 100%;
+            height: auto;
+        }
+        #cleaning-map .room {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #cleaning-map .room:hover {
+            stroke-width: 4px;
+            stroke: var(--accent);
+        }
+        .cleaning-task {
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cleaning-task:last-child { border: none; }
+        .overdue-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Household</h1>
+            </div>
+             <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+        <main>
+             <div class="tabs">
+                <button class="tab-btn active" data-view="shopping">Shopping Lists</button>
+                <button class="tab-btn" data-view="cleaning">Cleaning Schedule</button>
+            </div>
+            
+            <!-- Shopping Content -->
+            <div id="shopping-content" class="tab-content">
+                <div class="page-header">
+                    <h2>Shopping</h2>
+                    <button id="add-shopping-item-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Item</button>
+                </div>
+                <div class="tabs">
+                     <button class="tab-btn active" data-view="stores">By Store</button>
+                     <button class="tab-btn" data-view="wishlist">Wishlist</button>
+                </div>
+                
+                <div id="shopping-stores-view">
+                    <div class="shopping-layout">
+                        <div class="card">
+                            <h3><i class="fas fa-store"></i> Physical Stores</h3>
+                            <ul id="physical-list" class="shopping-list"></ul>
+                        </div>
+                        <div class="card">
+                            <h3><i class="fas fa-laptop"></i> Online Shopping</h3>
+                            <ul id="online-list" class="shopping-list"></ul>
+                        </div>
+                    </div>
+                </div>
+                 <div id="shopping-wishlist-view" class="hidden">
+                      <div class="card">
+                          <h3><i class="fas fa-gem"></i> Wishlist</h3>
+                          <ul id="wishlist-list" class="shopping-list"></ul>
+                      </div>
+                 </div>
+            </div>
+            
+            <!-- Cleaning Content -->
+            <div id="cleaning-content" class="tab-content hidden">
+                 <div class="page-header">
+                    <h2>Cleaning</h2>
+                    <button id="add-cleaning-task-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Task</button>
+                </div>
+                <div class="cleaning-layout">
+                    <div class="cleaning-map-container">
+                        <h3>Areas</h3>
+                        <svg id="cleaning-map" viewBox="0 0 200 200">
+                             <!-- This can be expanded to be a real "builder" -->
+                            <rect class="room" data-area-id="1" x="10" y="10" width="80" height="80" fill="#4C566A" stroke="#2E3440" stroke-width="2"/>
+                            <text x="50" y="55" fill="white" text-anchor="middle">Kitchen</text>
+                            <rect class="room" data-area-id="2" x="110" y="10" width="80" height="180" fill="#4C566A" stroke="#2E3440" stroke-width="2"/>
+                            <text x="150" y="105" fill="white" text-anchor="middle">Living</text>
+                             <rect class="room" data-area-id="3" x="10" y="110" width="80" height="80" fill="#4C566A" stroke="#2E3440" stroke-width="2"/>
+                            <text x="50" y="155" fill="white" text-anchor="middle">Bath</text>
+                        </svg>
+                        <button id="add-area-btn" class="btn btn-secondary" style="width:100%; margin-top:16px;">Add New Area</button>
+                    </div>
+                    <div class="card">
+                         <h3 id="cleaning-list-title">All Tasks</h3>
+                         <div id="cleaning-tasks-list"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="toast-container"></div>
+    <script type="module">
+        // This is a placeholder for the household logic.
+        // It would include rendering for shopping/cleaning, handling modals,
+        // and the logic for the SVG map and overdue status colors.
+        console.log("Household page script loaded.");
+        document.getElementById('add-shopping-item-btn').addEventListener('click', () => {
+             alert('Add Shopping Item modal would open here.');
+        });
+        document.getElementById('add-cleaning-task-btn').addEventListener('click', () => {
+             alert('Add Cleaning Task modal would open here.');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habits & Weekly Goals - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--secondary-text);
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-md);
+        }
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 16px;
+            display: block;
+            opacity: 0.5;
+        }
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Routines</h1>
+            </div>
+             <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <button class="tab-btn active" data-view="weekly">Weekly Goals</button>
+                <button class="tab-btn" data-view="habits">Habits</button>
+                <button class="tab-btn" data-view="insights">Insights</button>
+            </div>
+
+            <!-- Weekly Goals Content -->
+            <div id="weekly-content" class="tab-content">
+                <div class="page-header">
+                    <h2>Weekly Time Goals</h2>
+                    <button id="add-weekly-goal-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Goal</button>
+                </div>
+                <div id="weekly-goals-container" class="card-container" style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- Weekly goal components will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Habits Content -->
+            <div id="habits-content" class="tab-content hidden">
+                <div class="page-header">
+                     <div>
+                        <h2 id="habit-week-title">This Week's Habits</h2>
+                        <p style="color: var(--secondary-text); font-size: 0.9em;">Track your progress for the current week.</p>
+                     </div>
+                    <button id="add-habit-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Habit</button>
+                </div>
+                <div id="habits-tracker-container">
+                    <!-- Habit tracker components will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Insights Content -->
+            <div id="insights-content" class="tab-content hidden">
+                 <div class="page-header">
+                    <h2>Habit Insights</h2>
+                </div>
+                <div class="insights-grid">
+                    <div class="card">
+                        <h3>Completion Rate (Last 30 Days)</h3>
+                        <canvas id="completion-chart"></canvas>
+                    </div>
+                    <div class="card">
+                        <h3>Current Streaks</h3>
+                        <ul id="streaks-list" style="list-style: none; padding: 0;"></ul>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    
+    <!-- Modals -->
+    <modal-dialog id="weekly-goal-modal" title="New Weekly Goal">
+        <form id="weekly-goal-form">
+             <input type="hidden" id="weekly-goal-id">
+             <div class="form-group">
+                <label for="weekly-goal-title">Goal Title</label>
+                <input type="text" id="weekly-goal-title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="weekly-goal-minutes">Target Minutes per Week</label>
+                <input type="number" id="weekly-goal-minutes" class="form-control" required min="1">
+            </div>
+            <div style="text-align: right; margin-top:24px;">
+                 <button type="button" class="btn btn-secondary" data-action="close">Cancel</button>
+                 <button type="submit" class="btn btn-primary">Save Goal</button>
+            </div>
+        </form>
+    </modal-dialog>
+
+    <modal-dialog id="habit-modal" title="New Habit">
+        <form id="habit-form">
+            <input type="hidden" id="habit-id">
+            <div class="form-group">
+                <label for="habit-title">Habit Title</label>
+                <input type="text" id="habit-title" class="form-control" placeholder="e.g., Read for 15 minutes" required>
+            </div>
+            <div class="form-group">
+                <label>Schedule</label>
+                <div id="habit-schedule-days" style="display:flex; justify-content:space-between; gap: 8px;">
+                    <!-- Day checkboxes will be populated by JS -->
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="habit-per-week">Or, Times per Week</label>
+                <input type="number" id="habit-per-week" class="form-control" min="1" max="7" placeholder="e.g., 3 (overrides daily schedule)">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:30px;">
+                <button type="button" id="delete-habit-btn" class="btn btn-danger hidden">Delete Habit</button>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-action="close">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Habit</button>
+                </div>
+            </div>
+        </form>
+    </modal-dialog>
+    
+    <script type="module" src="/shared/components/habit-tracker.js"></script>
+    <script type="module" src="/shared/components/modal-dialog.js"></script>
+    <script type="module">
+        import { db } from '/shared/db.js';
+        import { showToast, playSound, on, dispatchEvent } from '/shared/app.js';
+
+        // State variables
+        let habits = [];
+        let weeklyGoals = [];
+        let logs = {}; // { habitId: [log, ...], weeklyId: [log, ...] }
+        let currentWeekStartISO;
+
+        // DOM Elements
+        const elements = {
+            tabs: document.querySelector('.tabs'),
+            weeklyContent: document.getElementById('weekly-content'),
+            habitsContent: document.getElementById('habits-content'),
+            insightsContent: document.getElementById('insights-content'),
+            addWeeklyGoalBtn: document.getElementById('add-weekly-goal-btn'),
+            addHabitBtn: document.getElementById('add-habit-btn'),
+            weeklyGoalsContainer: document.getElementById('weekly-goals-container'),
+            habitsTrackerContainer: document.getElementById('habits-tracker-container'),
+            weeklyGoalModal: document.getElementById('weekly-goal-modal'),
+            habitModal: document.getElementById('habit-modal'),
+            habitForm: document.getElementById('habit-form'),
+            weeklyGoalForm: document.getElementById('weekly-goal-form'),
+        };
+
+        // --- Utility Functions ---
+        function getWeekStart(date = new Date()) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday is start of week
+            d.setDate(diff);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        // --- Initialization ---
+        async function init() {
+            currentWeekStartISO = getWeekStart().toISOString().split('T')[0];
+            await loadData();
+            renderAll();
+            setupEventListeners();
+        }
+
+        async function loadData() {
+            try {
+                const [h, wg, hl, wl] = await Promise.all([
+                    db.habits.toArray(),
+                    db.weekly.toArray(),
+                    db.habitLogs.toArray(),
+                    db.weeklyLogs.where('weekStartISO').equals(currentWeekStartISO).toArray()
+                ]);
+                habits = h;
+                weeklyGoals = wg;
+                logs.habits = hl;
+                logs.weekly = wl;
+            } catch (error) {
+                console.error("Failed to load habit/weekly data:", error);
+                showToast("Error loading data.", "error");
+            }
+        }
+        
+        function renderAll() {
+            renderWeeklyGoals();
+            renderHabits();
+            renderInsights();
+        }
+
+        // --- Weekly Goals Logic ---
+        function renderWeeklyGoals() {
+            const container = elements.weeklyGoalsContainer;
+            container.innerHTML = '';
+            if (weeklyGoals.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fas fa-bullseye"></i><p>No weekly goals set. Add one to get started!</p></div>`;
+                return;
+            }
+            weeklyGoals.forEach(goal => {
+                const log = logs.weekly.find(l => l.weeklyId === goal.id) || { loggedMinutes: 0 };
+                const percentage = Math.min(100, (log.loggedMinutes / goal.targetMinutes) * 100);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                        <h4>${goal.title}</h4>
+                        <span>${log.loggedMinutes} / ${goal.targetMinutes} min</span>
+                    </div>
+                    <div style="background-color:var(--tertiary-bg); border-radius:4px; overflow:hidden; height:8px;">
+                        <div style="width:${percentage}%; height:100%; background-color:var(--lavender); transition: width 0.5s ease;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:16px; align-items:center;">
+                        <input type="number" class="form-control" placeholder="Add minutes" style="flex:1;" data-goal-id="${goal.id}">
+                        <button class="btn btn-secondary add-minutes-btn" data-goal-id="${goal.id}">Add</button>
+                        <button class="btn btn-secondary edit-weekly-goal-btn" data-goal-id="${goal.id}"><i class="fas fa-edit"></i></button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        // --- Habits Logic ---
+        function renderHabits() {
+            const container = elements.habitsTrackerContainer;
+            container.innerHTML = '';
+            if (habits.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fas fa-check-circle"></i><p>No habits defined. Create a new habit to start tracking.</p></div>`;
+                return;
+            }
+            habits.forEach(habit => {
+                const tracker = document.createElement('habit-tracker');
+                tracker.habit = habit;
+                tracker.logs = logs.habits.filter(l => l.habitId === habit.id);
+                container.appendChild(tracker);
+            });
+        }
+
+        // --- Insights Logic ---
+        function renderInsights() {
+            renderCompletionChart();
+            renderStreaks();
+        }
+
+        let completionChartInstance = null;
+        function renderCompletionChart() {
+            const ctx = document.getElementById('completion-chart')?.getContext('2d');
+            if (!ctx) return;
+            
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            const recentLogs = logs.habits.filter(l => new Date(l.dateISO) >= thirtyDaysAgo);
+            const doneCount = recentLogs.filter(l => l.status === 'done').length;
+            const missedCount = recentLogs.filter(l => l.status === 'missed').length;
+            
+            const total = doneCount + missedCount;
+            const completionRate = total > 0 ? (doneCount / total) * 100 : 0;
+            
+            if (completionChartInstance) {
+                completionChartInstance.destroy();
+            }
+
+            completionChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Missed'],
+                    datasets: [{
+                        data: [doneCount, missedCount],
+                        backgroundColor: ['var(--mint)', 'var(--danger)'],
+                        borderColor: 'var(--secondary-bg)',
+                        borderWidth: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: 'var(--primary-text)'} },
+                        title: { display: true, text: `Overall Completion: ${completionRate.toFixed(1)}%`, color: 'var(--primary-text)' }
+                    }
+                }
+            });
+        }
+        
+        function renderStreaks() {
+             const list = document.getElementById('streaks-list');
+             list.innerHTML = '';
+             if (habits.length === 0) {
+                list.innerHTML = `<li class="empty-state" style="background:none; padding:10px 0;"><p>No habits to analyze.</p></li>`;
+                return;
+             }
+             
+             habits.forEach(habit => {
+                const habitLogs = logs.habits.filter(l => l.habitId === habit.id && l.status === 'done').map(l => l.dateISO).sort().reverse();
+                let streak = 0;
+                if (habitLogs.length > 0) {
+                    streak = 1;
+                    let lastDate = new Date(habitLogs[0]);
+                    for (let i = 1; i < habitLogs.length; i++) {
+                        let currentDate = new Date(habitLogs[i]);
+                        const diffTime = Math.abs(lastDate - currentDate);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if(diffDays === 1) {
+                            streak++;
+                            lastDate = currentDate;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                 const li = document.createElement('li');
+                 li.style.cssText = 'display:flex; justify-content:space-between; padding:12px 0; border-bottom: 1px solid var(--border-color);';
+                 li.innerHTML = `<span>${habit.title}</span><span style="font-weight:bold;"><i class="fas fa-fire" style="color:var(--nord-orange);"></i> ${streak} days</span>`;
+                 list.appendChild(li);
+             });
+        }
+
+
+        // --- Event Listeners & Handlers ---
+        function setupEventListeners() {
+            // Tab switching
+            elements.tabs.addEventListener('click', e => {
+                if (e.target.matches('.tab-btn')) {
+                    elements.tabs.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    
+                    elements.weeklyContent.classList.add('hidden');
+                    elements.habitsContent.classList.add('hidden');
+                    elements.insightsContent.classList.add('hidden');
+                    
+                    document.getElementById(`${e.target.dataset.view}-content`).classList.remove('hidden');
+                    if (e.target.dataset.view === 'insights') renderInsights();
+                }
+            });
+
+            // Modals
+            elements.addWeeklyGoalBtn.addEventListener('click', () => openWeeklyGoalModal());
+            elements.addHabitBtn.addEventListener('click', () => openHabitModal());
+
+            // Forms
+            elements.weeklyGoalForm.addEventListener('submit', handleWeeklyGoalSubmit);
+            elements.habitForm.addEventListener('submit', handleHabitSubmit);
+            document.getElementById('delete-habit-btn').addEventListener('click', handleDeleteHabit);
+
+            // Dynamic event listeners for generated content
+            elements.weeklyGoalsContainer.addEventListener('click', e => {
+                if (e.target.matches('.add-minutes-btn')) {
+                    const goalId = e.target.dataset.goalId;
+                    const input = e.target.previousElementSibling;
+                    const minutes = parseInt(input.value, 10);
+                    if (goalId && minutes > 0) {
+                        handleAddMinutes(goalId, minutes);
+                        input.value = '';
+                    }
+                }
+                if (e.target.closest('.edit-weekly-goal-btn')) {
+                    const goalId = e.target.closest('.edit-weekly-goal-btn').dataset.goalId;
+                    openWeeklyGoalModal(goalId);
+                }
+            });
+            
+            on('habit-log-updated', async (event) => {
+                const { habitId, date, status } = event.detail;
+                const existingLog = await db.habitLogs.where({ habitId, dateISO: date }).first();
+                if(existingLog) {
+                    await db.habitLogs.update(existingLog.id, { status });
+                } else {
+                    await db.habitLogs.add({ habitId, dateISO: date, status });
+                }
+                await loadData(); // Reload all data
+                renderHabits(); // Re-render habits to reflect change
+            });
+            
+            on('habit-edit', (event) => {
+                openHabitModal(event.detail.id);
+            });
+        }
+
+        async function handleAddMinutes(goalId, minutes) {
+            let log = await db.weeklyLogs.where({ weeklyId: goalId, weekStartISO: currentWeekStartISO }).first();
+            if (log) {
+                await db.weeklyLogs.update(log.id, { loggedMinutes: log.loggedMinutes + minutes });
+            } else {
+                await db.weeklyLogs.add({ weeklyId: goalId, weekStartISO: currentWeekStartISO, loggedMinutes: minutes, completed: false });
+            }
+            playSound('click');
+            showToast(`Added ${minutes} minutes.`, "success");
+            await loadData();
+            renderWeeklyGoals();
+        }
+
+        // --- Modal/Form Handling ---
+        function openWeeklyGoalModal(goalId = null) {
+            const form = elements.weeklyGoalForm;
+            form.reset();
+            form.querySelector('#weekly-goal-id').value = '';
+            
+            if (goalId) {
+                const goal = weeklyGoals.find(g => g.id === goalId);
+                if (goal) {
+                    form.querySelector('#weekly-goal-id').value = goal.id;
+                    form.querySelector('#weekly-goal-title').value = goal.title;
+                    form.querySelector('#weekly-goal-minutes').value = goal.targetMinutes;
+                }
+            }
+            elements.weeklyGoalModal.show();
+        }
+
+        async function handleWeeklyGoalSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const id = form.querySelector('#weekly-goal-id').value;
+            const data = {
+                title: form.querySelector('#weekly-goal-title').value,
+                targetMinutes: parseInt(form.querySelector('#weekly-goal-minutes').value, 10)
+            };
+            if (id) {
+                await db.weekly.update(id, data);
+            } else {
+                await db.weekly.add(data);
+            }
+            elements.weeklyGoalModal.hide();
+            showToast("Weekly goal saved.", "success");
+            await loadData();
+            renderWeeklyGoals();
+        }
+        
+        function openHabitModal(habitId = null) {
+            const form = elements.habitForm;
+            form.reset();
+            form.querySelector('#habit-id').value = '';
+            document.getElementById('delete-habit-btn').classList.add('hidden');
+
+            // Populate schedule days
+            const daysContainer = document.getElementById('habit-schedule-days');
+            const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            daysContainer.innerHTML = weekdays.map((day, i) => `
+                <label style="flex:1; text-align:center;">
+                    <span style="display:block; font-size:0.8em;">${day}</span>
+                    <input type="checkbox" name="schedule" value="${i + 1}">
+                </label>
+            `).join('');
+
+            if (habitId) {
+                const habit = habits.find(h => h.id === habitId);
+                if (habit) {
+                    form.querySelector('#habit-id').value = habit.id;
+                    form.querySelector('#habit-title').value = habit.title;
+                    if (habit.schedule && habit.schedule.length) {
+                        habit.schedule.forEach(dayIndex => {
+                            const checkbox = form.querySelector(`input[name="schedule"][value="${dayIndex}"]`);
+                            if (checkbox) checkbox.checked = true;
+                        });
+                    }
+                    if (habit.perWeek) {
+                         form.querySelector('#habit-per-week').value = habit.perWeek;
+                    }
+                    document.getElementById('delete-habit-btn').classList.remove('hidden');
+                }
+            }
+            elements.habitModal.show();
+        }
+
+        async function handleHabitSubmit(e) {
+             e.preventDefault();
+            const form = e.target;
+            const id = form.querySelector('#habit-id').value;
+            const schedule = Array.from(form.querySelectorAll('input[name="schedule"]:checked')).map(cb => parseInt(cb.value));
+            const perWeek = parseInt(form.querySelector('#habit-per-week').value, 10) || null;
+            
+            const data = {
+                title: form.querySelector('#habit-title').value,
+                schedule: perWeek ? [] : schedule, // If perWeek is set, daily schedule is ignored
+                perWeek
+            };
+            
+            if (id) {
+                await db.habits.update(id, data);
+            } else {
+                await db.habits.add(data);
+            }
+            elements.habitModal.hide();
+            showToast("Habit saved.", "success");
+            await loadData();
+            renderHabits();
+        }
+        
+        async function handleDeleteHabit() {
+            const id = document.getElementById('habit-id').value;
+            if (id && confirm('Are you sure you want to delete this habit and all its logs?')) {
+                await db.transaction('rw', db.habits, db.habitLogs, async () => {
+                    await db.habits.delete(id);
+                    await db.habitLogs.where('habitId').equals(id).delete();
+                });
+                elements.habitModal.hide();
+                showToast("Habit deleted.", "success");
+                await loadData();
+                renderAll();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
