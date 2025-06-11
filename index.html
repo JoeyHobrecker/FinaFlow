@@ -3,115 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Dashboard - Task Manager</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-    <script src="dexie.min.js" defer></script>
-    <script src="app.js" defer></script>
+    <title>Dashboard - FinaFlow</title>
+    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .nav-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            text-decoration: none;
+            color: var(--primary-text);
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-lg);
+            gap: 16px;
+            transition: var(--transition-std);
+        }
+        .nav-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            background-color: var(--tertiary-bg);
+        }
+        .nav-card i {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+        .nav-card .icon-tasks { color: var(--accent); }
+        .nav-card .icon-projects { color: var(--mint); }
+        .nav-card .icon-habits { color: var(--lavender); }
+        .nav-card .icon-household { color: var(--nord-orange); }
+        .nav-card .icon-general { color: var(--nord-frost-3); }
+        .nav-card .icon-time { color: var(--danger); }
+        .nav-card .icon-settings { color: var(--secondary-text); }
+        
+        .dashboard-card {
+            background-color: var(--secondary-bg);
+            border-radius: var(--border-radius-md);
+            padding: var(--padding-lg);
+            animation: slideInUp 0.5s ease-out;
+        }
+        .dashboard-card h3 {
+            margin-bottom: var(--padding-md);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: var(--padding-sm);
+        }
+        #today-tasks-list li {
+            list-style: none;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #today-tasks-list li:last-child {
+            border-bottom: none;
+        }
+    </style>
 </head>
 <body>
+
     <div class="app-container">
-        <header class="main-header">
-            <div class="logo-wrapper">
-                <span class="logo-text">Dashboard</span>
+        <header class="app-header">
+            <div class="logo">
+                <button id="back-button" class="hidden" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="logo-text">Dashboard</h1>
             </div>
-            <span class="current-time" id="current-time"></span>
+            <nav class="main-nav">
+                <a href="/settings.html" class="btn btn-secondary" aria-label="Settings"><i class="fas fa-cog"></i></a>
+            </nav>
         </header>
 
-        <main class="dashboard-grid">
-            <!-- Important Tasks -->
-            <div class="dashboard-card" id="dashboard-tasks">
-                <div class="card-header">
-                    <h3><i class="fas fa-star"></i> Important Tasks</h3>
-                    <a href="tasks.html" class="card-link">View All &rarr;</a>
+        <main>
+            <section id="main-navigation" class="dashboard-grid">
+                <a href="/tasks.html" class="nav-card">
+                    <i class="fas fa-tasks icon-tasks"></i>
+                    <h2>Tasks</h2>
+                    <p>Manage your to-do list</p>
+                </a>
+                <a href="/projects.html" class="nav-card">
+                    <i class="fas fa-sitemap icon-projects"></i>
+                    <h2>Projects</h2>
+                    <p>Oversee large-scale goals</p>
+                </a>
+                 <a href="/habits.html" class="nav-card">
+                    <i class="fas fa-calendar-check icon-habits"></i>
+                    <h2>Habits</h2>
+                    <p>Build consistent routines</p>
+                </a>
+                 <a href="/household.html" class="nav-card">
+                    <i class="fas fa-home icon-household"></i>
+                    <h2>Household</h2>
+                    <p>Shopping and cleaning lists</p>
+                </a>
+                 <a href="/general.html" class="nav-card">
+                    <i class="fas fa-book-open icon-general"></i>
+                    <h2>General</h2>
+                    <p>Notes, ideas, and more</p>
+                </a>
+                <a href="/time.html" class="nav-card">
+                    <i class="fas fa-stopwatch-20 icon-time"></i>
+                    <h2>Time</h2>
+                    <p>Track your focus and time</p>
+                </a>
+            </section>
+            
+            <section id="quick-view" class="dashboard-grid" style="margin-top: 24px;">
+                <div class="dashboard-card" id="today-tasks-card" style="animation-delay: 0.1s;">
+                    <h3>Tasks for Today</h3>
+                    <ul id="today-tasks-list">
+                        <!-- Tasks marked for today will be populated here -->
+                    </ul>
+                    <div class="empty-state hidden"><p>No tasks marked for today. Enjoy your day!</p></div>
                 </div>
-                <div class="card-content" id="dashboard-tasks-list">
-                    <div class="empty-state"><p>No important tasks today.</p></div>
+                 <div class="dashboard-card" id="quick-add-card" style="animation-delay: 0.2s;">
+                    <h3>Quick Add</h3>
+                    <div class="form-group">
+                        <label for="quick-add-concept">New Concept / Idea</label>
+                        <textarea id="quick-add-concept" class="form-control" rows="3" placeholder="Jot down a quick thought..."></textarea>
+                    </div>
+                    <button id="save-quick-concept" class="btn btn-primary" style="width: 100%;">Save Concept</button>
                 </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="dashboard-card" id="dashboard-actions">
-                <div class="card-header">
-                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-                </div>
-                <div class="card-content">
-                    <div class="quick-actions-grid">
-                        <a href="tasks.html" class="action-button"><i class="fas fa-plus"></i><span>New Task</span></a>
-                        <a href="projects.html" class="action-button"><i class="fas fa-folder-plus"></i><span>New Project</span></a>
-                        <button class="action-button" id="quick-backup-btn"><i class="fas fa-download"></i><span>Backup</span></button>
-                        <button class="action-button" id="quick-time-tracker-btn"><i class="fas fa-clock"></i><span>Time Track</span></button>
+                 <div class="dashboard-card" id="quick-actions-card" style="animation-delay: 0.3s;">
+                    <h3>Quick Actions</h3>
+                     <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <button id="quick-backup-btn" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Backup Data
+                        </button>
+                        <button id="start-time-tracker-btn" class="btn btn-success">
+                            <i class="fas fa-play"></i> Start Time Tracker
+                        </button>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Last Project -->
-            <div class="dashboard-card" id="dashboard-last-project">
-                <div class="card-header">
-                    <h3><i class="fas fa-history"></i> Last Project</h3>
-                    <a href="projects.html" class="card-link">View All &rarr;</a>
-                </div>
-                <div class="card-content" id="dashboard-project-content">
-                     <div class="empty-state"><p>No projects viewed yet.</p></div>
-                </div>
-            </div>
-
-
-            <!-- Household Status -->
-            <div class="dashboard-card" id="dashboard-household">
-                <div class="card-header">
-                    <h3><i class="fas fa-home"></i> Household Status</h3>
-                    <a href="household.html" class="card-link">View All &rarr;</a>
-                </div>
-                <div class="card-content" id="dashboard-household-list">
-                     <div class="empty-state"><p>No pending household tasks.</p></div>
-                </div>
-            </div>
-
-            <!-- Habits -->
-            <div class="dashboard-card" id="dashboard-habits">
-                <div class="card-header">
-                    <h3><i class="fas fa-check-double"></i> Today's Habits</h3>
-                    <a href="habits.html" class="card-link">View All &rarr;</a>
-                </div>
-                <div class="card-content" id="dashboard-habits-list">
-                    <div class="empty-state"><p>No habits scheduled for today.</p></div>
-                </div>
-            </div>
-
+            </section>
         </main>
-
-        <nav class="main-navigation">
-            <a href="tasks.html" class="nav-link">
-                <i class="fas fa-tasks"></i>
-                <span>Tasks</span>
-            </a>
-            <a href="projects.html" class="nav-link">
-                <i class="fas fa-project-diagram"></i>
-                <span>Projects</span>
-            </a>
-            <a href="notes.html" class="nav-link">
-                <i class="fas fa-sticky-note"></i>
-                <span>Notes</span>
-            </a>
-            <a href="habits.html" class="nav-link">
-                <i class="fas fa-calendar-check"></i>
-                <span>Habits</span>
-            </a>
-            <a href="household.html" class="nav-link">
-                <i class="fas fa-home"></i>
-                <span>Household</span>
-            </a>
-            <a href="timemanagement.html" class="nav-link">
-                <i class="fas fa-hourglass-half"></i>
-                <span>Time</span>
-            </a>
-            <a href="settings.html" class="nav-link">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </a>
-        </nav>
     </div>
+
     <div id="toast-container"></div>
+    
+    <script type="module">
+        import { db } from '/shared/db.js';
+        import router from '/shared/router.js';
+        import { showToast, formatDate } from '/shared/app.js';
+        
+        document.querySelectorAll('.nav-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.preventDefault();
+                router.navigate(card.href);
+            });
+        });
+
+        async function loadTodayTasks() {
+            const list = document.getElementById('today-tasks-list');
+            const emptyState = document.querySelector('#today-tasks-card .empty-state');
+            list.innerHTML = '<li>Loading...</li>';
+
+            try {
+                const todayTasks = await db.tasks.where('isToday').equals(1).and(task => !task.completed).toArray();
+
+                if (todayTasks.length === 0) {
+                    list.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                emptyState.classList.add('hidden');
+                list.innerHTML = todayTasks
+                    .slice(0, 5) // Limit to 5 for the dashboard
+                    .map(task => `<li>${task.title}</li>`)
+                    .join('');
+
+            } catch (error) {
+                console.error("Failed to load today's tasks", error);
+                list.innerHTML = '<li>Error loading tasks.</li>';
+            }
+        }
+        
+        async function saveQuickConcept() {
+            const conceptInput = document.getElementById('quick-add-concept');
+            const text = conceptInput.value.trim();
+            if (!text) {
+                showToast("Please enter some text for your concept.", "warning");
+                return;
+            }
+            
+            const newConcept = {
+                title: text.split('\n')[0].substring(0, 50), // Title is the first line
+                text: text,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                pinned: false,
+            };
+            
+            try {
+                await db.notes.add(newConcept);
+                showToast("Concept saved successfully!", "success");
+                conceptInput.value = '';
+            } catch (error) {
+                console.error("Failed to save concept", error);
+                showToast("Error saving concept.", "error");
+            }
+        }
+        
+        async function quickBackup() {
+            showToast("Starting backup...", "info");
+            try {
+                const tables = ['tasks', 'quickTasks', 'projects', 'concepts', 'notes', 'folders', 'habits', 'habitLogs', 'weekly', 'weeklyLogs', 'shopping', 'shoppingTags', 'cleaningAreas', 'cleaningTasks', 'timelogs', 'pomodoroLogs', 'taskTags', 'noteTags', 'settings'];
+                const backupData = {};
+                for (const table of tables) {
+                    backupData[table] = await db[table].toArray();
+                }
+
+                const json = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `FinaFlow-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showToast("Backup downloaded successfully.", "success");
+                await db.settings.put({key: 'lastBackup', value: new Date().toISOString()});
+            } catch (error) {
+                console.error("Backup failed", error);
+                showToast("Backup failed. See console for details.", "error");
+            }
+        }
+
+        document.getElementById('save-quick-concept').addEventListener('click', saveQuickConcept);
+        document.getElementById('quick-backup-btn').addEventListener('click', quickBackup);
+        document.getElementById('start-time-tracker-btn').addEventListener('click', () => {
+            router.navigate('/time.html');
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+             loadTodayTasks();
+        });
+
+    </script>
 </body>
 </html>
