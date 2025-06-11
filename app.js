@@ -136,13 +136,13 @@
 
         switch (pageId) {
             case 'index': this.renderDashboard(); break;
-            case 'tasks-page': this.renderTasksPage(); break;
-            case 'projects-page': this.renderProjectsPage(); break;
-            case 'notes-page': this.renderNotesPage(); break;
-            case 'habits-page': this.renderHabitsPage(); break;
-            case 'household-page': this.renderHouseholdPage(); break;
-            case 'timemanagement-page': this.renderTimeManagementPage(); break;
-            case 'settings-page': this.renderSettingsPage(); break;
+            case 'tasks': this.renderTasksPage(); break;
+            case 'projects': this.renderProjectsPage(); break;
+            case 'notes': this.renderNotesPage(); break;
+            case 'habits': this.renderHabitsPage(); break;
+            case 'household': this.renderHouseholdPage(); break;
+            case 'timemanagement': this.renderTimeManagementPage(); break;
+            case 'settings': this.renderSettingsPage(); break;
         }
     };
 
@@ -166,13 +166,13 @@
         // Page-specific listeners
         switch (pageId) {
             case 'index': this.setupDashboardListeners(); break;
-            case 'tasks-page': this.setupTasksPageListeners(); break;
-            case 'projects-page': this.setupProjectsPageListeners(); break;
-            case 'notes-page': this.setupNotesPageListeners(); break;
-            case 'habits-page': this.setupHabitsPageListeners(); break;
-            case 'household-page': this.setupHouseholdPageListeners(); break;
-            case 'timemanagement-page': this.setupTimeManagementPageListeners(); break;
-            case 'settings-page': this.setupSettingsPageListeners(); break;
+            case 'tasks': this.setupTasksPageListeners(); break;
+            case 'projects': this.setupProjectsPageListeners(); break;
+            case 'notes': this.setupNotesPageListeners(); break;
+            case 'habits': this.setupHabitsPageListeners(); break;
+            case 'household': this.setupHouseholdPageListeners(); break;
+            case 'timemanagement': this.setupTimeManagementPageListeners(); break;
+            case 'settings': this.setupSettingsPageListeners(); break;
         }
     };
     
