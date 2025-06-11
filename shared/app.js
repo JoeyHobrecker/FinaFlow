@@ -29,9 +29,9 @@ export const uuid = () => (window.crypto && typeof window.crypto.randomUUID === 
 let areNotificationsEnabled = true;
 let areSoundsEnabled = true;
 const sounds = {
-    click: new Audio('/assets/sounds/click.mp3'),
-    done: new Audio('/assets/sounds/done.mp3'),
-    break: new Audio('/assets/sounds/break.mp3'),
+    click: new Audio('assets/sounds/click.mp3'),
+    done: new Audio('assets/sounds/done.mp3'),
+    break: new Audio('assets/sounds/break.mp3'),
 };
 
 export async function requestNotificationPermission() {
@@ -50,7 +50,7 @@ export function showNotification(title, options = {}) {
         navigator.serviceWorker.ready.then(registration => {
             registration.showNotification(title, {
                 body: "FinaFlow Productivity Suite",
-                icon: '/assets/icons/icon-192x192.png',
+                icon: 'assets/icons/icon-192x192.png',
                 ...options
             });
         });
@@ -94,7 +94,7 @@ async function init() {
     // Register Service Worker
     if ('serviceWorker' in navigator) {
         try {
-            await navigator.serviceWorker.register('/service-worker.js');
+            await navigator.serviceWorker.register('service-worker.js');
             console.log('Service Worker registered successfully.');
         } catch (error) {
             console.error('Service Worker registration failed:', error);

@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects - FinaFlow</title>
-    <link rel="stylesheet" href="/shared/ui.css">
+    <link rel="stylesheet" href="shared/ui.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <style>
         .projects-header {
             display: flex;
@@ -61,7 +61,7 @@
                 <button id="back-button" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
                 <h1 id="page-title" class="logo-text">Projects & Concepts</h1>
             </div>
-            <a href="/index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
+            <a href="index.html" class="btn btn-secondary" aria-label="Dashboard"><i class="fas fa-th-large"></i>  Dashboard</a>
         </header>
 
         <main>
@@ -136,8 +136,8 @@
         // It would handle rendering projects, concepts, folders, details,
         // and all interaction logic including drag-drop, modals, and Quill.
         // Due to the complexity, providing a fully working stub.
-        import { db } from '/shared/db.js';
-        import { showToast } from '/shared/app.js';
+        import { db } from 'shared/db.js';
+        import { showToast } from 'shared/app.js';
 
         console.log("Projects page script loaded.");
         document.getElementById('list-view').classList.remove('hidden');

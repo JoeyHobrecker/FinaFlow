@@ -2,19 +2,19 @@
   "name": "FinaFlow Productivity Suite",
   "short_name": "FinaFlow",
   "description": "A comprehensive suite for managing tasks, projects, habits, and more.",
-  "start_url": "/index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#20232A",
   "theme_color": "#4F7FFF",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/assets/icons/icon-192x192.png",
+      "src": "assets/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/assets/icons/icon-512x512.png",
+      "src": "assets/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

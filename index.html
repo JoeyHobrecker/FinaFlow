@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - FinaFlow</title>
-    <link rel="stylesheet" href="/shared/ui.css">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="shared/ui.css">
+    <link rel="manifest" href="manifest.json">
     <style>
         .dashboard-grid {
             display: grid;
@@ -73,38 +73,38 @@
                 <h1 class="logo-text">Dashboard</h1>
             </div>
             <nav class="main-nav">
-                <a href="/settings.html" class="btn btn-secondary" aria-label="Settings"><i class="fas fa-cog"></i></a>
+                <a href="settings.html" class="btn btn-secondary" aria-label="Settings"><i class="fas fa-cog"></i></a>
             </nav>
         </header>
 
         <main>
             <section id="main-navigation" class="dashboard-grid">
-                <a href="/tasks.html" class="nav-card">
+                <a href="tasks.html" class="nav-card">
                     <i class="fas fa-tasks icon-tasks"></i>
                     <h2>Tasks</h2>
                     <p>Manage your to-do list</p>
                 </a>
-                <a href="/projects.html" class="nav-card">
+                <a href="projects.html" class="nav-card">
                     <i class="fas fa-sitemap icon-projects"></i>
                     <h2>Projects</h2>
                     <p>Oversee large-scale goals</p>
                 </a>
-                 <a href="/habits.html" class="nav-card">
+                 <a href="habits.html" class="nav-card">
                     <i class="fas fa-calendar-check icon-habits"></i>
                     <h2>Habits</h2>
                     <p>Build consistent routines</p>
                 </a>
-                 <a href="/household.html" class="nav-card">
+                 <a href="household.html" class="nav-card">
                     <i class="fas fa-home icon-household"></i>
                     <h2>Household</h2>
                     <p>Shopping and cleaning lists</p>
                 </a>
-                 <a href="/general.html" class="nav-card">
+                 <a href="general.html" class="nav-card">
                     <i class="fas fa-book-open icon-general"></i>
                     <h2>General</h2>
                     <p>Notes, ideas, and more</p>
                 </a>
-                <a href="/time.html" class="nav-card">
+                <a href="time.html" class="nav-card">
                     <i class="fas fa-stopwatch-20 icon-time"></i>
                     <h2>Time</h2>
                     <p>Track your focus and time</p>
@@ -145,9 +145,9 @@
     <div id="toast-container"></div>
     
     <script type="module">
-        import { db } from '/shared/db.js';
-        import router from '/shared/router.js';
-        import { showToast, formatDate } from '/shared/app.js';
+        import { db } from 'shared/db.js';
+        import router from 'shared/router.js';
+        import { showToast, formatDate } from 'shared/app.js';
         
         document.querySelectorAll('.nav-card').forEach(card => {
             card.addEventListener('click', (e) => {
@@ -238,7 +238,7 @@
         document.getElementById('save-quick-concept').addEventListener('click', saveQuickConcept);
         document.getElementById('quick-backup-btn').addEventListener('click', quickBackup);
         document.getElementById('start-time-tracker-btn').addEventListener('click', () => {
-            router.navigate('/time.html');
+            router.navigate('time.html');
         });
 
         document.addEventListener('DOMContentLoaded', () => {
