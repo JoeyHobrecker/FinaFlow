@@ -2,22 +2,22 @@
 
 const CACHE_NAME = 'finaflow-cache-v1';
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/tasks.html',
-    '/projects.html',
-    '/habits.html',
-    '/household.html',
-    '/general.html',
-    '/time.html',
-    '/settings.html',
-    '/shared/ui.css',
-    '/shared/app.js',
-    '/shared/db.js',
-    '/shared/router.js',
-    '/shared/dexie.mjs',
-    '/assets/icons/icon-192x192.png',
-    '/assets/icons/icon-512x512.png',
+    './',
+    'index.html',
+    'tasks.html',
+    'projects.html',
+    'habits.html',
+    'household.html',
+    'general.html',
+    'time.html',
+    'settings.html',
+    'shared/ui.css',
+    'shared/app.js',
+    'shared/db.js',
+    'shared/router.js',
+    'shared/dexie.mjs',
+    'assets/icons/icon-192x192.png',
+    'assets/icons/icon-512x512.png',
     // Note: Sounds are not cached by default to save space, but could be added.
 ];
 
@@ -98,7 +98,7 @@ function updatePomodoro() {
 
         self.registration.showNotification(notifTitle, {
             body: notifBody,
-            icon: '/assets/icons/icon-192x192.png',
+            icon: 'assets/icons/icon-192x192.png',
         });
         
         self.clients.matchAll().then(clients => {

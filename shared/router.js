@@ -30,7 +30,7 @@ const router = {
             if (targetPage) {
                 this.navigate(targetPage, true); // true to indicate it's a 'back' navigation
             } else {
-                this.navigate('/index.html', true);
+                this.navigate('index.html', true);
             }
         });
     },
@@ -58,7 +58,7 @@ const router = {
         const history = this.getHistory();
         const currentPage = window.location.pathname;
 
-        if (currentPage === '/index.html' || currentPage === '/' || history.length <= 1) {
+        if (currentPage.endsWith('index.html') || currentPage === '/' || history.length <= 1) {
             this.backButton.classList.add('hidden');
         } else {
             this.backButton.classList.remove('hidden');
