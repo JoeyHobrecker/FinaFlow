@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habits - Task Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="dexie.min.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo-wrapper">
+                <a href="index.html" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</a>
+                <span class="logo-text">Habits & Routines</span>
+            </div>
+        </header>
+        
+        <main class="main-content-full-width">
+            <div class="page-tabs">
+                <button id="weekly-tasks-tab-btn" class="tab-btn active">Weekly Tasks</button>
+                <button id="habits-tab-btn" class="tab-btn">Habits</button>
+                <button id="insights-tab-btn" class="tab-btn">Insights</button>
+            </div>
+
+            <!-- Weekly Tasks Content -->
+            <div id="weekly-tasks-content" class="tab-content">
+                <div class="action-buttons-toolbar">
+                    <button id="add-weekly-task-btn" class="action-btn"><i class="fas fa-plus"></i> Add Weekly Task</button>
+                </div>
+                <div id="weekly-tasks-list" class="weekly-tasks-list"></div>
+            </div>
+
+            <!-- Habits Content -->
+            <div id="habits-content" class="tab-content hidden">
+                 <div class="action-buttons-toolbar">
+                    <button id="add-habit-btn" class="action-btn"><i class="fas fa-plus"></i> Add Habit</button>
+                </div>
+                <div id="habits-list" class="habits-list"></div>
+            </div>
+
+            <!-- Insights Content -->
+            <div id="insights-content" class="tab-content hidden">
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <h3>Weekly Task Completion</h3>
+                        <canvas id="weekly-tasks-chart"></canvas>
+                    </div>
+                    <div class="insight-card">
+                        <h3>Habit Streaks</h3>
+                        <div id="habit-streaks-list"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-weekly-task-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Add Weekly Task</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="weekly-task-form">
+            <div class="form-group"><label for="weekly-task-title">Title</label><input type="text" id="weekly-task-title" required></div>
+            <div class="form-group"><label for="weekly-task-minutes">Target Minutes</label><input type="number" id="weekly-task-minutes" required></div>
+            <div class="form-actions"><button type="button" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add</button></div>
+        </form></div>
+    </div></div>
+    <div id="edit-weekly-task-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Edit Weekly Task</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="edit-weekly-task-form">
+            <input type="hidden" id="edit-weekly-id">
+            <div class="form-group"><label for="edit-weekly-task-title">Title</label><input type="text" id="edit-weekly-task-title" required></div>
+            <div class="form-group"><label for="edit-weekly-task-minutes">Target Minutes</label><input type="number" id="edit-weekly-task-minutes" required></div>
+            <div class="form-actions"><button type="button" id="delete-weekly-task-btn" class="delete-btn">Delete</button><button type="button" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save</button></div>
+        </form></div>
+    </div></div>
+    <div id="add-habit-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Add Habit</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="habit-form">
+            <div class="form-group"><label for="habit-title">Habit Title</label><input type="text" id="habit-title" required></div>
+            <div class="form-group"><label>Frequency</label>
+                <div class="habit-frequency-days">
+                    <label><input type="checkbox" data-day="1"> Mon</label>
+                    <label><input type="checkbox" data-day="2"> Tue</label>
+                    <label><input type="checkbox" data-day="3"> Wed</label>
+                    <label><input type="checkbox" data-day="4"> Thu</label>
+                    <label><input type="checkbox" data-day="5"> Fri</label>
+                    <label><input type="checkbox" data-day="6"> Sat</label>
+                    <label><input type="checkbox" data-day="0"> Sun</label>
+                </div>
+            </div>
+            <div class="form-actions"><button type="button" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Add Habit</button></div>
+        </form></div>
+    </div></div>
+    <div id="edit-habit-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Edit Habit</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="edit-habit-form">
+            <input type="hidden" id="edit-habit-id">
+            <div class="form-group"><label for="edit-habit-title">Habit Title</label><input type="text" id="edit-habit-title" required></div>
+            <div class="form-group"><label>Frequency</label>
+                <div class="habit-frequency-days">
+                    <label><input type="checkbox" data-day="1"> Mon</label>
+                    <label><input type="checkbox" data-day="2"> Tue</label>
+                    <label><input type="checkbox" data-day="3"> Wed</label>
+                    <label><input type="checkbox" data-day="4"> Thu</label>
+                    <label><input type="checkbox" data-day="5"> Fri</label>
+                    <label><input type="checkbox" data-day="6"> Sat</label>
+                    <label><input type="checkbox" data-day="0"> Sun</label>
+                </div>
+            </div>
+            <div class="form-actions"><button type="button" id="delete-habit-btn" class="delete-btn">Delete</button><button type="button" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save</button></div>
+        </form></div>
+    </div></div>
+
+    <div id="toast-container"></div>
+</body>
+</html>

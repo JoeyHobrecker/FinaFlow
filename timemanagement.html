@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Management - Task Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="dexie.min.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo-wrapper">
+                <a href="index.html" class="back-btn action-btn"><i class="fas fa-arrow-left"></i> Back</a>
+                <span class="logo-text">Time Management</span>
+            </div>
+        </header>
+
+        <main class="main-content-full-width">
+            <div class="page-tabs">
+                <button id="tracker-tab-btn" class="tab-btn active">Time Tracker</button>
+                <button id="pomodoro-tab-btn" class="tab-btn">Pomodoro</button>
+                <button id="tools-tab-btn" class="tab-btn">Tools</button>
+                <button id="time-data-tab-btn" class="tab-btn">Data</button>
+            </div>
+
+            <!-- Time Tracker Content -->
+            <div id="tracker-content" class="tab-content">
+                <div class="time-tracker-current">
+                    <input type="text" id="time-tracker-activity" placeholder="What are you working on?">
+                    <div id="time-tracker-display">00:00:00</div>
+                    <button id="time-tracker-start-btn" class="action-btn"><i class="fas fa-play"></i> Start</button>
+                </div>
+                <div id="time-tracker-history"></div>
+            </div>
+
+            <!-- Pomodoro Content -->
+            <div id="pomodoro-content" class="tab-content hidden">
+                <div class="pomodoro-timer">
+                    <div id="pomodoro-display">25:00</div>
+                    <div class="pomodoro-controls">
+                        <button id="pomodoro-start-btn" class="action-btn"><i class="fas fa-play"></i> Start</button>
+                        <button id="pomodoro-reset-btn" class="action-btn"><i class="fas fa-sync"></i> Reset</button>
+                        <button id="pomodoro-settings-btn" class="action-btn"><i class="fas fa-cog"></i></button>
+                    </div>
+                </div>
+                <div id="pomodoro-task-integration" class="hidden">
+                    <h4>Focus Tasks for this Session</h4>
+                    <div id="pomodoro-tasks-list"></div>
+                </div>
+            </div>
+
+            <!-- Tools Content -->
+            <div id="tools-content" class="tab-content hidden">
+                <div class="tools-grid">
+                    <div class="tool-card">
+                        <h3>Stopwatch</h3>
+                        <div id="stopwatch-display">00:00:00.0</div>
+                        <div class="tool-controls">
+                            <button id="stopwatch-start-btn" class="action-btn">Start</button>
+                            <button id="stopwatch-lap-btn" class="action-btn">Lap</button>
+                        </div>
+                        <ul id="stopwatch-laps"></ul>
+                    </div>
+                    <div class="tool-card">
+                        <h3>Timer</h3>
+                        <div class="timer-inputs">
+                            <input type="number" id="timer-hours" placeholder="H" min="0">
+                            <input type="number" id="timer-minutes" placeholder="M" min="0">
+                            <input type="number" id="timer-seconds" placeholder="S" min="0">
+                        </div>
+                        <div class="tool-controls">
+                            <button id="timer-start-btn" class="action-btn">Start</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Data Content -->
+            <div id="time-data-content" class="tab-content hidden">
+                 <div class="insights-grid">
+                    <div class="insight-card">
+                        <h3>Time Spent per Activity</h3>
+                        <canvas id="time-tracking-chart"></canvas>
+                    </div>
+                    <div class="insight-card">
+                        <h3>Pomodoro Sessions</h3>
+                        <canvas id="pomodoro-history-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="pomodoro-settings-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Pomodoro Settings</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body"><form id="pomodoro-settings-form">
+            <div class="form-group"><label for="pomodoro-work-minutes">Work Duration (min)</label><input type="number" id="pomodoro-work-minutes" value="25"></div>
+            <div class="form-group"><label for="pomodoro-short-break">Short Break (min)</label><input type="number" id="pomodoro-short-break" value="5"></div>
+            <div class="form-group"><label for="pomodoro-long-break">Long Break (min)</label><input type="number" id="pomodoro-long-break" value="15"></div>
+            <div class="form-group"><label for="pomodoro-sessions">Sessions until Long Break</label><input type="number" id="pomodoro-sessions" value="4"></div>
+            <div class="form-actions"><button type="button" class="cancel-btn">Cancel</button><button type="submit" class="submit-btn">Save</button></div>
+        </form></div>
+    </div></div>
+    <div id="pomodoro-start-modal" class="modal"><div class="modal-content">
+        <div class="modal-header"><h2>Start Pomodoro Session</h2><span class="close-modal">&times;</span></div>
+        <div class="modal-body">
+            <p>Select tasks to focus on for this session.</p>
+            <div id="pomodoro-task-selection-list"></div>
+            <div class="form-actions"><button type="button" class="cancel-btn">Start without Tasks</button><button id="pomodoro-confirm-start-btn" type="button" class="submit-btn">Start with Selected</button></div>
+        </div>
+    </div></div>
+
+    <div id="toast-container"></div>
+</body>
+</html>
