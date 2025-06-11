@@ -138,9 +138,15 @@
         // Due to the complexity, providing a fully working stub.
         import { db } from 'shared/db.js';
         import { showToast } from 'shared/app.js';
+        import router from 'shared/router.js';
 
         console.log("Projects page script loaded.");
         document.getElementById('list-view').classList.remove('hidden');
+
+        document.getElementById('back-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            router.navigate('index.html');
+        });
 
         // Placeholder to show the file is included and script runs
         document.getElementById('add-project-btn').addEventListener('click', () => {

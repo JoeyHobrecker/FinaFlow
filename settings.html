@@ -82,6 +82,7 @@
     <script type="module">
         import { db } from 'shared/db.js';
         import { showToast, requestNotificationPermission } from 'shared/app.js';
+        import router from 'shared/router.js';
         
         const elements = {
             themeSelect: document.getElementById('theme-select'),
@@ -94,6 +95,11 @@
             priorityFormula: document.getElementById('priority-formula'),
             saveFormulaBtn: document.getElementById('save-formula-btn'),
         };
+
+        document.getElementById('back-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            router.navigate('index.html');
+        });
 
         async function loadSettings() {
             const settings = await db.settings.toArray();
