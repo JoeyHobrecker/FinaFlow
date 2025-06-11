@@ -369,6 +369,10 @@
             e.preventDefault();
             this.handleTagFormSubmit(true);
         });
+        document.getElementById('delete-tag-btn')?.addEventListener('click', () => {
+            const id = document.getElementById('edit-tag-id').value;
+            this.deleteTag(id);
+        });
     };
 
     app.setTaskView = function(view) {
@@ -652,6 +656,31 @@
         this.closeModal(document.getElementById('edit-tag-modal'));
         this.renderTaskTags();
         this.renderManageTaskTags();
+        this.renderTasks();
+    };
+
+    app.deleteTag = async function(id){
+        await this.db.taskTags.delete(id);
+        this.state.taskTags = this.state.taskTags.filter(t => t.id !== id);
+        // Remove tag from tasks
+        let updated = false;
+        this.state.tasks.forEach(task => {
+            if(task.tags){
+                const idx = task.tags.indexOf(id);
+                if(idx > -1){
+                    task.tags.splice(idx,1);
+                    updated = true;
+                }
+            }
+        });
+        if(updated){
+            await this.db.tasks.bulkPut(this.state.tasks);
+        }
+        this.closeModal(document.getElementById('edit-tag-modal'));
+        this.renderTaskTags();
+        this.renderManageTaskTags();
+        this.renderTasks();
+        this.showToast('Tag deleted.', 'success');
     };
 
     app.handleTaskFormSubmit = async function(formEl, isEdit){
@@ -792,32 +821,593 @@
     // ===================================================================================
     // ============================ PROJECTS (projects.html) =============================
     // ===================================================================================
-    app.renderProjectsPage = function() { /* ... implementation ... */ };
-    app.setupProjectsPageListeners = function() { /* ... implementation ... */ };
+    app.renderProjectsPage = function() {
+        this.dom.projectsGrid = document.getElementById('projects-grid');
+        this.dom.projectsList = document.getElementById('projects-list');
+        this.dom.conceptsList = document.getElementById('concepts-list');
+        this.renderProjects();
+        this.renderConcepts();
+    };
+
+    app.setupProjectsPageListeners = function() {
+        document.getElementById('projects-view-btn')?.addEventListener('click', () => this.switchProjectsTab('projects'));
+        document.getElementById('concepts-view-btn')?.addEventListener('click', () => this.switchProjectsTab('concepts'));
+        document.getElementById('new-project-btn')?.addEventListener('click', () => this.openModal(document.getElementById('add-project-modal')));
+        document.getElementById('new-concept-btn')?.addEventListener('click', () => {
+            document.querySelector('.concept-input-container').classList.toggle('hidden-by-default');
+        });
+        document.getElementById('save-concept-btn')?.addEventListener('click', () => this.saveConcept());
+        document.getElementById('project-form')?.addEventListener('submit', e => {
+            e.preventDefault();
+            this.handleProjectFormSubmit(false);
+        });
+        document.getElementById('edit-project-form')?.addEventListener('submit', e => {
+            e.preventDefault();
+            this.handleProjectFormSubmit(true);
+        });
+    };
+
+    app.switchProjectsTab = function(tab) {
+        document.getElementById('projects-area').classList.toggle('hidden', tab !== 'projects');
+        document.getElementById('concept-area').classList.toggle('hidden', tab !== 'concepts');
+        document.getElementById('projects-view-btn').classList.toggle('active', tab === 'projects');
+        document.getElementById('concepts-view-btn').classList.toggle('active', tab === 'concepts');
+    };
+
+    app.renderProjects = function() {
+        if(!this.dom.projectsGrid) return;
+        this.dom.projectsGrid.innerHTML = '';
+        this.state.projects.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.textContent = p.title;
+            this.dom.projectsGrid.appendChild(card);
+        });
+    };
+
+    app.renderConcepts = function() {
+        if(!this.dom.conceptsList) return;
+        this.dom.conceptsList.innerHTML = '';
+        this.state.concepts.forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'concept-card';
+            card.textContent = c.title;
+            this.dom.conceptsList.appendChild(card);
+        });
+    };
+
+    app.saveConcept = async function() {
+        const title = document.getElementById('concept-title-input').value.trim();
+        const text = document.getElementById('concept-input').value.trim();
+        if(!title && !text) return;
+        const concept = { id: this.generateId(), title: title || 'Untitled Concept', text, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        this.state.concepts.push(concept);
+        await this.db.concepts.add(concept);
+        document.getElementById('concept-title-input').value = '';
+        document.getElementById('concept-input').value = '';
+        this.renderConcepts();
+        this.showToast('Concept saved!', 'success');
+    };
+
+    app.handleProjectFormSubmit = async function(isEdit) {
+        const form = document.getElementById(isEdit ? 'edit-project-form' : 'project-form');
+        const id = isEdit ? document.getElementById('edit-project-id').value : this.generateId();
+        const title = form.querySelector(`#${isEdit ? 'edit-' : ''}project-title`).value.trim();
+        const description = form.querySelector(`#${isEdit ? 'edit-' : ''}project-description-input`).value.trim();
+        const deadline = form.querySelector(`#${isEdit ? 'edit-' : ''}project-deadline-date`).value || null;
+        const status = form.querySelector(`input[name="${isEdit ? 'edit-project-status' : 'project-status'}"]:checked`).value;
+        if(!title) return;
+        const projectData = { id, title, description, deadline, status, updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() };
+        if(isEdit) {
+            const idx = this.state.projects.findIndex(p => p.id === id);
+            if(idx > -1) this.state.projects[idx] = projectData;
+        } else {
+            this.state.projects.push(projectData);
+        }
+        await this.db.projects.put(projectData);
+        this.closeModal(document.getElementById(isEdit ? 'edit-project-modal' : 'add-project-modal'));
+        this.renderProjects();
+        this.showToast(`Project ${isEdit ? 'saved' : 'added'}!`, 'success');
+    };
     
     // ===================================================================================
     // ============================== NOTES (notes.html) =================================
     // ===================================================================================
-    app.renderNotesPage = function() { /* ... implementation ... */ };
-    app.setupNotesPageListeners = function() { /* ... implementation ... */ };
+    app.renderNotesPage = function() {
+        this.dom.notesGrid = document.getElementById('notes-grid');
+        this.dom.noteTagFilters = document.getElementById('note-tag-filters');
+        this.renderGeneralNotes();
+    };
+
+    app.setupNotesPageListeners = function() {
+        document.getElementById('add-note-btn')?.addEventListener('click', () => this.openNoteEditor());
+        document.getElementById('close-note-editor-btn')?.addEventListener('click', () => this.closeModal(document.getElementById('note-editor-overlay')));
+        document.getElementById('save-edited-note-btn')?.addEventListener('click', () => this.saveCurrentNote());
+        document.getElementById('edit-note-tag-form')?.addEventListener('submit', e => {
+            e.preventDefault();
+            this.handleNoteTagFormSubmit();
+        });
+    };
+
+    app.renderGeneralNotes = function() {
+        if(!this.dom.notesGrid) return;
+        this.dom.notesGrid.innerHTML = '';
+        this.state.generalNotes.forEach(n => {
+            const card = document.createElement('div');
+            card.className = 'note-card';
+            card.textContent = n.title;
+            card.addEventListener('click', () => this.openNoteEditor(n.id));
+            this.dom.notesGrid.appendChild(card);
+        });
+    };
+
+    app.openNoteEditor = function(id) {
+        const modal = document.getElementById('note-editor-overlay');
+        const titleEl = document.getElementById('note-editor-title');
+        const textArea = document.getElementById('concept-detail-text');
+        modal.dataset.editId = id || '';
+        if(id){
+            const note = this.state.generalNotes.find(n => n.id === id);
+            if(note){
+                titleEl.textContent = note.title;
+                textArea.value = note.content || '';
+            }
+        }else{
+            titleEl.textContent = 'New Note';
+            textArea.value = '';
+        }
+        this.openModal(modal);
+    };
+
+    app.saveCurrentNote = async function() {
+        const modal = document.getElementById('note-editor-overlay');
+        const id = modal.dataset.editId || this.generateId();
+        const title = document.getElementById('note-editor-title').textContent.trim();
+        const content = document.getElementById('concept-detail-text').value.trim();
+        let note = this.state.generalNotes.find(n => n.id === id);
+        if(note){
+            Object.assign(note, { title, content, updatedAt: new Date().toISOString() });
+        }else{
+            note = { id, title, content, tags: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            this.state.generalNotes.push(note);
+        }
+        await this.db.generalNotes.put(note);
+        this.closeModal(modal);
+        this.renderGeneralNotes();
+        this.showToast('Note saved!', 'success');
+    };
+
+    app.handleNoteTagFormSubmit = function() { /* placeholder for future tag editing */ };
     
     // ===================================================================================
     // ============================== HABITS (habits.html) ===============================
     // ===================================================================================
-    app.renderHabitsPage = function() { /* ... implementation ... */ };
-    app.setupHabitsPageListeners = function() { /* ... implementation ... */ };
+    app.renderHabitsPage = function() {
+        // Cache DOM elements for this page
+        this.dom.weeklyTasksList = document.getElementById('weekly-tasks-list');
+        this.dom.habitsList = document.getElementById('habits-list');
+
+        // Render the default view
+        this.renderWeeklyTasks();
+        this.renderHabits();
+    };
+
+    app.setupHabitsPageListeners = function() {
+        // --- Tab Switching ---
+        document.getElementById('weekly-tasks-tab-btn').addEventListener('click', () => this.switchHabitsTab('weekly-tasks'));
+        document.getElementById('habits-tab-btn').addEventListener('click', () => this.switchHabitsTab('habits'));
+        document.getElementById('insights-tab-btn').addEventListener('click', () => this.switchHabitsTab('insights'));
+
+        // --- Modal Buttons ---
+        document.getElementById('add-weekly-task-btn').addEventListener('click', () => this.openModal(document.getElementById('add-weekly-task-modal')));
+        document.getElementById('add-habit-btn').addEventListener('click', () => this.openModal(document.getElementById('add-habit-modal')));
+
+        // --- Form Submissions ---
+        document.getElementById('weekly-task-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleWeeklyTaskFormSubmit(false);
+        });
+        document.getElementById('edit-weekly-task-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleWeeklyTaskFormSubmit(true);
+        });
+        document.getElementById('habit-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleHabitFormSubmit(false);
+        });
+        document.getElementById('edit-habit-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleHabitFormSubmit(true);
+        });
+
+        // --- Delete Buttons in Modals ---
+        document.getElementById('delete-weekly-task-btn').addEventListener('click', () => {
+            const id = document.getElementById('edit-weekly-id').value;
+            this.deleteWeeklyTask(id);
+        });
+        document.getElementById('delete-habit-btn').addEventListener('click', () => {
+            const id = document.getElementById('edit-habit-id').value;
+            this.deleteHabit(id);
+        });
+    };
+
+    app.switchHabitsTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`${tabId}-content`).classList.remove('hidden');
+        document.getElementById(`${tabId}-tab-btn`).classList.add('active');
+    };
+
+    // --- Weekly Task Functions ---
+
+    app.renderWeeklyTasks = function() {
+        if (!this.dom.weeklyTasksList) return;
+        this.dom.weeklyTasksList.innerHTML = '';
+
+        const weekStart = this.getWeekStartDate(new Date());
+
+        this.state.weeklyTasks.forEach(task => {
+            const log = this.state.weeklyLogs.find(l => l.taskId === task.id && l.weekStart === weekStart.toISOString().slice(0, 10));
+            const currentMinutes = log ? log.minutes : 0;
+            const percentage = Math.min(100, (currentMinutes / task.targetMinutes) * 100);
+
+            const card = document.createElement('div');
+            card.className = 'habit-card weekly-task-card';
+            card.innerHTML = `
+                <div class="habit-card-header">
+                    <h4 class="weekly-task-title">${task.title}</h4>
+                    <button class="weekly-task-edit-btn action-btn"><i class="fas fa-edit"></i></button>
+                </div>
+                <div class="weekly-task-progress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: ${percentage}%;"></div>
+                    </div>
+                    <span class="progress-label">${currentMinutes} / ${task.targetMinutes} min</span>
+                </div>
+                <div class="weekly-task-actions">
+                    <button class="add-time-btn" data-time="15">+15</button>
+                    <button class="add-time-btn" data-time="30">+30</button>
+                    <button class="add-time-btn" data-time="60">+60</button>
+                    <input type="number" class="custom-time-input" placeholder="Custom">
+                    <button class="add-custom-time-btn">Add</button>
+                </div>
+            `;
+
+            card.querySelector('.weekly-task-edit-btn').addEventListener('click', () => this.openEditWeeklyTaskModal(task.id));
+            card.querySelectorAll('.add-time-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const time = parseInt(btn.dataset.time, 10);
+                    this.logWeeklyTaskTime(task.id, time);
+                });
+            });
+            card.querySelector('.add-custom-time-btn').addEventListener('click', () => {
+                const input = card.querySelector('.custom-time-input');
+                const time = parseInt(input.value, 10);
+                if (time > 0) {
+                    this.logWeeklyTaskTime(task.id, time);
+                    input.value = '';
+                }
+            });
+
+            this.dom.weeklyTasksList.appendChild(card);
+        });
+    };
+
+    app.handleWeeklyTaskFormSubmit = async function(isEdit) {
+        const modalId = isEdit ? 'edit-weekly-task-modal' : 'add-weekly-task-modal';
+        const formId = isEdit ? 'edit-weekly-task-form' : 'weekly-task-form';
+        const form = document.getElementById(formId);
+
+        const id = isEdit ? document.getElementById('edit-weekly-id').value : this.generateId();
+        const title = form.querySelector(`#${isEdit ? 'edit-' : ''}weekly-task-title`).value;
+        const targetMinutes = parseInt(form.querySelector(`#${isEdit ? 'edit-' : ''}weekly-task-minutes`).value, 10);
+
+        if (!title || !targetMinutes) {
+            this.showToast('Title and minutes are required.', 'error');
+            return;
+        }
+
+        const taskData = { id, title, targetMinutes };
+
+        if (isEdit) {
+            const index = this.state.weeklyTasks.findIndex(t => t.id === id);
+            this.state.weeklyTasks[index] = taskData;
+        } else {
+            this.state.weeklyTasks.push(taskData);
+        }
+        await this.db.weeklyTasks.put(taskData);
+
+        this.showToast(`Weekly task ${isEdit ? 'updated' : 'added'}!`, 'success');
+        this.closeModal(document.getElementById(modalId));
+        form.reset();
+        this.renderWeeklyTasks();
+    };
+
+    app.logWeeklyTaskTime = async function(taskId, minutes) {
+        const weekStart = this.getWeekStartDate(new Date()).toISOString().slice(0, 10);
+        let log = await this.db.weeklyLogs.get([taskId, weekStart]);
+
+        if (log) {
+            log.minutes += minutes;
+        } else {
+            log = { taskId, weekStart, minutes };
+        }
+
+        await this.db.weeklyLogs.put(log);
+        const stateLogIndex = this.state.weeklyLogs.findIndex(l => l.taskId === taskId && l.weekStart === weekStart);
+        if (stateLogIndex > -1) {
+            this.state.weeklyLogs[stateLogIndex] = log;
+        } else {
+            this.state.weeklyLogs.push(log);
+        }
+
+        this.renderWeeklyTasks();
+    };
+
+    app.openEditWeeklyTaskModal = function(id) {
+        const task = this.state.weeklyTasks.find(t => t.id === id);
+        if (!task) return;
+        document.getElementById('edit-weekly-id').value = task.id;
+        document.getElementById('edit-weekly-task-title').value = task.title;
+        document.getElementById('edit-weekly-task-minutes').value = task.targetMinutes;
+        this.openModal(document.getElementById('edit-weekly-task-modal'));
+    };
+
+    app.deleteWeeklyTask = async function(id) {
+        await this.db.weeklyTasks.delete(id);
+        await this.db.weeklyLogs.where({ taskId: id }).delete();
+
+        this.state.weeklyTasks = this.state.weeklyTasks.filter(t => t.id !== id);
+        this.state.weeklyLogs = this.state.weeklyLogs.filter(l => l.taskId !== id);
+
+        this.showToast('Weekly task deleted.', 'success');
+        this.closeModal(document.getElementById('edit-weekly-task-modal'));
+        this.renderWeeklyTasks();
+    };
+
+    app.getWeekStartDate = function(d) {
+        d = new Date(d);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+        return new Date(d.setDate(diff));
+    };
+
+    // --- Habit Functions ---
+
+    app.renderHabits = function() {
+        if (!this.dom.habitsList) return;
+        this.dom.habitsList.innerHTML = '';
+
+        const today = new Date();
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        this.state.habits.forEach(habit => {
+            const card = document.createElement('div');
+            card.className = 'habit-card';
+            let daysHtml = '';
+            for (let i = 0; i < 7; i++) {
+                const dayDate = new Date(today);
+                dayDate.setDate(today.getDate() - (today.getDay() - i + 7) % 7);
+                const dateStr = dayDate.toISOString().slice(0, 10);
+                const jsDay = dayDate.getDay();
+
+                const isScheduled = habit.frequency.includes(jsDay);
+                const log = this.state.habitLogs.find(l => l.habitId === habit.id && l.date === dateStr);
+
+                let dayClass = 'habit-day-dot';
+                if (isScheduled) dayClass += ' scheduled';
+                if (log) dayClass += ' completed';
+
+                daysHtml += `<div class="${dayClass}" data-date="${dateStr}" data-habit-id="${habit.id}" title="${dateStr}">${days[jsDay].charAt(0)}</div>`;
+            }
+
+            card.innerHTML = `
+                <div class="habit-card-header">
+                    <h4>${habit.title}</h4>
+                    <button class="habit-edit-btn action-btn"><i class="fas fa-edit"></i></button>
+                </div>
+                <div class="habit-days">${daysHtml}</div>
+            `;
+
+            card.querySelector('.habit-edit-btn').addEventListener('click', () => this.openEditHabitModal(habit.id));
+            card.querySelectorAll('.habit-day-dot.scheduled').forEach(dot => {
+                dot.addEventListener('click', (e) => {
+                    const habitId = e.target.dataset.habitId;
+                    const date = e.target.dataset.date;
+                    this.toggleHabitLog(habitId, date);
+                });
+            });
+
+            this.dom.habitsList.appendChild(card);
+        });
+    };
+
+    app.handleHabitFormSubmit = async function(isEdit) {
+        const modalId = isEdit ? 'edit-habit-modal' : 'add-habit-modal';
+        const form = document.getElementById(isEdit ? 'edit-habit-form' : 'habit-form');
+
+        const id = isEdit ? document.getElementById('edit-habit-id').value : this.generateId();
+        const title = form.querySelector(`#${isEdit ? 'edit-' : ''}habit-title`).value;
+        const frequency = Array.from(form.querySelectorAll('.habit-frequency-days input:checked')).map(cb => parseInt(cb.dataset.day, 10));
+
+        if (!title || frequency.length === 0) {
+            this.showToast('Title and at least one day are required.', 'error');
+            return;
+        }
+
+        const habitData = { id, title, frequency, createdAt: new Date().toISOString() };
+
+        if (isEdit) {
+            const index = this.state.habits.findIndex(h => h.id === id);
+            this.state.habits[index] = { ...this.state.habits[index], ...habitData };
+        } else {
+            this.state.habits.push(habitData);
+        }
+        await this.db.habits.put(habitData);
+
+        this.showToast(`Habit ${isEdit ? 'updated' : 'added'}!`, 'success');
+        this.closeModal(document.getElementById(modalId));
+        form.reset();
+        this.renderHabits();
+    };
+
+    app.toggleHabitLog = async function(habitId, date) {
+        const log = await this.db.habitLogs.get([habitId, date]);
+
+        if (log) {
+            await this.db.habitLogs.delete([habitId, date]);
+            this.state.habitLogs = this.state.habitLogs.filter(l => !(l.habitId === habitId && l.date === date));
+        } else {
+            const newLog = { habitId, date };
+            await this.db.habitLogs.put(newLog);
+            this.state.habitLogs.push(newLog);
+        }
+        this.renderHabits();
+    };
+
+    app.openEditHabitModal = function(id) {
+        const habit = this.state.habits.find(h => h.id === id);
+        if (!habit) return;
+        const form = document.getElementById('edit-habit-form');
+        document.getElementById('edit-habit-id').value = habit.id;
+        document.getElementById('edit-habit-title').value = habit.title;
+
+        form.querySelectorAll('.habit-frequency-days input').forEach(cb => {
+            cb.checked = habit.frequency.includes(parseInt(cb.dataset.day, 10));
+        });
+
+        this.openModal(document.getElementById('edit-habit-modal'));
+    };
+
+    app.deleteHabit = async function(id) {
+        await this.db.habits.delete(id);
+        await this.db.habitLogs.where({ habitId: id }).delete();
+
+        this.state.habits = this.state.habits.filter(h => h.id !== id);
+        this.state.habitLogs = this.state.habitLogs.filter(l => l.habitId !== id);
+
+        this.showToast('Habit deleted.', 'success');
+        this.closeModal(document.getElementById('edit-habit-modal'));
+        this.renderHabits();
+    };
     
     // ===================================================================================
     // ============================ HOUSEHOLD (household.html) ===========================
     // ===================================================================================
-    app.renderHouseholdPage = function() { /* ... implementation ... */ };
-    app.setupHouseholdPageListeners = function() { /* ... implementation ... */ };
+    app.renderHouseholdPage = function() {
+        this.dom.physicalList = document.getElementById('physical-shopping-list');
+        this.dom.onlineList = document.getElementById('online-shopping-list');
+        this.dom.wishlistList = document.getElementById('wishlist-list');
+        this.renderShoppingLists();
+    };
+
+    app.setupHouseholdPageListeners = function() {
+        document.getElementById('shopping-tab-btn')?.addEventListener('click', () => this.switchHouseholdTab('shopping'));
+        document.getElementById('cleaning-tab-btn')?.addEventListener('click', () => this.switchHouseholdTab('cleaning'));
+        document.querySelectorAll('.add-shopping-item-input').forEach(inp => {
+            inp.addEventListener('keypress', e => {
+                if(e.key === 'Enter' && inp.value.trim()) {
+                    this.addShoppingItem(inp.dataset.listType, inp.value.trim());
+                    inp.value = '';
+                }
+            });
+        });
+        document.getElementById('clear-completed-shopping-btn')?.addEventListener('click', () => this.clearCompletedShopping());
+    };
+
+    app.switchHouseholdTab = function(tab) {
+        document.getElementById('shopping-content').classList.toggle('hidden', tab !== 'shopping');
+        document.getElementById('cleaning-content').classList.toggle('hidden', tab !== 'cleaning');
+        document.getElementById('shopping-tab-btn').classList.toggle('active', tab === 'shopping');
+        document.getElementById('cleaning-tab-btn').classList.toggle('active', tab === 'cleaning');
+    };
+
+    app.renderShoppingLists = function() {
+        if(!this.dom.physicalList) return;
+        const makeItem = item => {
+            const div = document.createElement('div');
+            div.className = 'shopping-item';
+            div.textContent = item.title;
+            return div;
+        };
+        this.dom.physicalList.innerHTML = '';
+        this.state.shoppingItems.filter(i => i.listType === 'physical' && !i.completedAt && !i.isWishlist).forEach(i => this.dom.physicalList.appendChild(makeItem(i)));
+        this.dom.onlineList.innerHTML = '';
+        this.state.shoppingItems.filter(i => i.listType === 'online' && !i.completedAt && !i.isWishlist).forEach(i => this.dom.onlineList.appendChild(makeItem(i)));
+        this.dom.wishlistList.innerHTML = '';
+        this.state.shoppingItems.filter(i => i.isWishlist).forEach(i => this.dom.wishlistList.appendChild(makeItem(i)));
+    };
+
+    app.addShoppingItem = async function(listType, title) {
+        const item = { id: this.generateId(), title, listType, tags: [], isWishlist: false, createdAt: new Date().toISOString() };
+        this.state.shoppingItems.push(item);
+        await this.db.shoppingItems.add(item);
+        this.renderShoppingLists();
+    };
+
+    app.clearCompletedShopping = async function() {
+        await this.db.shoppingItems.where('completedAt').notEqual(null).delete();
+        this.state.shoppingItems = this.state.shoppingItems.filter(i => !i.completedAt);
+        this.renderShoppingLists();
+    };
     
     // ===================================================================================
     // ========================= TIME MANAGEMENT (timemanagement.html) ===================
     // ===================================================================================
-    app.renderTimeManagementPage = function() { /* ... implementation ... */ };
-    app.setupTimeManagementPageListeners = function() { /* ... implementation ... */ };
+    app.renderTimeManagementPage = function() {
+        this.dom.timeTrackerDisplay = document.getElementById('time-tracker-display');
+        this.dom.pomodoroDisplay = document.getElementById('pomodoro-display');
+    };
+
+    app.setupTimeManagementPageListeners = function() {
+        document.getElementById('tracker-tab-btn')?.addEventListener('click', () => this.switchTimeTab('tracker'));
+        document.getElementById('pomodoro-tab-btn')?.addEventListener('click', () => this.switchTimeTab('pomodoro'));
+        document.getElementById('tools-tab-btn')?.addEventListener('click', () => this.switchTimeTab('tools'));
+        document.getElementById('time-data-tab-btn')?.addEventListener('click', () => this.switchTimeTab('time-data'));
+        document.getElementById('time-tracker-start-btn')?.addEventListener('click', () => this.toggleTimeTracker());
+        document.getElementById('pomodoro-start-btn')?.addEventListener('click', () => this.startPomodoro());
+        document.getElementById('pomodoro-reset-btn')?.addEventListener('click', () => this.resetPomodoro());
+    };
+
+    app.switchTimeTab = function(tab) {
+        ['tracker','pomodoro','tools','time-data'].forEach(t => {
+            document.getElementById(`${t}-content`).classList.toggle('hidden', t !== tab);
+            document.getElementById(`${t}-tab-btn`).classList.toggle('active', t === tab);
+        });
+    };
+
+    app.toggleTimeTracker = function() {
+        const ui = this.state.ui.timeTracker;
+        if(ui.timerId) {
+            clearInterval(ui.timerId);
+            ui.timerId = null;
+            ui.startTime = null;
+        } else {
+            ui.startTime = Date.now();
+            ui.timerId = setInterval(() => {
+                const elapsed = Date.now() - ui.startTime;
+                this.dom.timeTrackerDisplay.textContent = new Date(elapsed).toISOString().substr(11,8);
+            },1000);
+        }
+    };
+
+    app.startPomodoro = function() {
+        const settings = this.state.settings.pomodoro;
+        let remaining = settings.work * 60;
+        this.dom.pomodoroDisplay.textContent = `${settings.work}:00`;
+        clearInterval(this.state.ui.mainTimer.timerId);
+        this.state.ui.mainTimer.timerId = setInterval(() => {
+            remaining--; if(remaining <= 0){ clearInterval(this.state.ui.mainTimer.timerId); }
+            const m = String(Math.floor(remaining/60)).padStart(2,'0');
+            const s = String(remaining%60).padStart(2,'0');
+            this.dom.pomodoroDisplay.textContent = `${m}:${s}`;
+        },1000);
+    };
+
+    app.resetPomodoro = function() {
+        clearInterval(this.state.ui.mainTimer.timerId);
+        this.dom.pomodoroDisplay.textContent = `${this.state.settings.pomodoro.work}:00`;
+    };
     
     // ===================================================================================
     // ============================ SETTINGS (settings.html) =============================
