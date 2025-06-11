@@ -310,7 +310,9 @@
         this.dom.tagFiltersContainer = document.getElementById('tag-filters');
         this.dom.projectFiltersContainer = document.getElementById('project-filters');
         this.dom.manageTagsContainer = document.getElementById('manage-tags');
-        
+        this.populateProjectOptions(document.getElementById('task-project'));
+        this.populateProjectOptions(document.getElementById('edit-task-project'));
+
         this.dom.sortSelect.value = this.state.settings.currentTaskSort;
         
         this.renderTaskTags();
@@ -440,7 +442,71 @@
             document.addEventListener('mouseup', this.handleTaskMouseUp);
         });
 
-        // ... (rest of the element creation logic)
+        const header = document.createElement('div');
+        header.className = 'task-header';
+        const title = document.createElement('div');
+        title.className = 'task-title';
+        title.textContent = task.title;
+        header.appendChild(title);
+        el.appendChild(header);
+
+        if(task.description){
+            const desc = document.createElement('div');
+            desc.className = 'task-description';
+            desc.textContent = task.description;
+            el.appendChild(desc);
+        }
+
+        if(task.projectId){
+            const project = this.state.projects.find(p => p.id === task.projectId);
+            if(project){
+                const projEl = document.createElement('div');
+                projEl.className = 'task-project';
+                projEl.textContent = project.title;
+                el.appendChild(projEl);
+            }
+        }
+
+        if(task.tags && task.tags.length){
+            const tagsEl = document.createElement('div');
+            tagsEl.className = 'task-tags';
+            task.tags.forEach(id => {
+                const tag = this.state.taskTags.find(t => t.id === id);
+                if(tag){
+                    const tEl = document.createElement('span');
+                    tEl.className = 'task-tag';
+                    tEl.style.borderColor = tag.color;
+                    tEl.textContent = tag.name;
+                    tagsEl.appendChild(tEl);
+                }
+            });
+            el.appendChild(tagsEl);
+        }
+
+        if(task.deadline){
+            const meta = document.createElement('div');
+            meta.className = 'task-meta';
+            const dl = document.createElement('div');
+            dl.className = 'task-meta-item task-deadline';
+            dl.innerHTML = `<i class="fas fa-clock"></i> ${this.formatDate(task.deadline)}`;
+            meta.appendChild(dl);
+            el.appendChild(meta);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'task-action-btn task-complete-btn';
+        completeBtn.innerHTML = '<i class="fas fa-check"></i>';
+        completeBtn.addEventListener('click', () => this.toggleTaskCompletion(task.id));
+        const editBtn = document.createElement('button');
+        editBtn.className = 'task-action-btn task-edit-btn';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        editBtn.addEventListener('click', () => this.openEditTaskModal(task.id));
+        actions.appendChild(completeBtn);
+        actions.appendChild(editBtn);
+        el.appendChild(actions);
+
         return el;
     };
     
@@ -494,6 +560,230 @@
         task.isTaskOfTheDay = !task.isTaskOfTheDay;
         await this.db.tasks.put(task);
         this.showToast(task.isTaskOfTheDay ? 'Task of the Day set!' : 'Task of the Day removed.', 'success');
+        this.renderTasks();
+    };
+
+    // ----- Task Management Helpers -----
+    app.populateProjectOptions = function(selectEl) {
+        if(!selectEl) return;
+        selectEl.innerHTML = '<option value="">-- None --</option>';
+        this.state.projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.title;
+            selectEl.appendChild(opt);
+        });
+    };
+
+    app.renderTaskTags = function() {
+        if(!this.dom.tagFiltersContainer) return;
+        this.dom.tagFiltersContainer.innerHTML = '';
+        this.state.taskTags.forEach(tag => {
+            const btn = document.createElement('button');
+            btn.className = 'tag-filter';
+            btn.dataset.id = tag.id;
+            btn.innerHTML = `<span class="tag-color-dot" style="background-color:${tag.color}"></span>${tag.name}`;
+            if(this.state.ui.activeTaskFilters.includes(tag.id)) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                const idx = this.state.ui.activeTaskFilters.indexOf(tag.id);
+                if(idx >= 0) this.state.ui.activeTaskFilters.splice(idx,1); else this.state.ui.activeTaskFilters.push(tag.id);
+                btn.classList.toggle('active');
+                this.renderTasks();
+            });
+            this.dom.tagFiltersContainer.appendChild(btn);
+        });
+    };
+
+    app.renderProjectFilters = function() {
+        if(!this.dom.projectFiltersContainer) return;
+        this.dom.projectFiltersContainer.innerHTML = '';
+        this.state.projects.forEach(proj => {
+            const btn = document.createElement('button');
+            btn.className = 'tag-filter';
+            btn.dataset.id = proj.id;
+            btn.textContent = proj.title;
+            if(this.state.ui.activeProjectFilters.includes(proj.id)) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                const idx = this.state.ui.activeProjectFilters.indexOf(proj.id);
+                if(idx >= 0) this.state.ui.activeProjectFilters.splice(idx,1); else this.state.ui.activeProjectFilters.push(proj.id);
+                btn.classList.toggle('active');
+                this.renderTasks();
+            });
+            this.dom.projectFiltersContainer.appendChild(btn);
+        });
+    };
+
+    app.renderManageTaskTags = function() {
+        if(!this.dom.manageTagsContainer) return;
+        this.dom.manageTagsContainer.innerHTML = '';
+        this.state.taskTags.forEach(tag => {
+            const row = document.createElement('div');
+            row.className = 'manage-tag-row';
+            row.innerHTML = `<span class="tag-color-dot" style="background-color:${tag.color}"></span>${tag.name}`;
+            row.addEventListener('click', () => this.openEditTagModal(tag));
+            this.dom.manageTagsContainer.appendChild(row);
+        });
+    };
+
+    app.openEditTagModal = function(tag){
+        document.getElementById('edit-tag-id').value = tag.id;
+        document.getElementById('edit-tag-name').value = tag.name;
+        document.getElementById('edit-tag-color').value = tag.color;
+        this.openModal(document.getElementById('edit-tag-modal'));
+    };
+
+    app.handleTagFormSubmit = async function(isEdit){
+        const id = document.getElementById('edit-tag-id').value;
+        const name = document.getElementById('edit-tag-name').value.trim();
+        const color = document.getElementById('edit-tag-color').value;
+        if(!name) return;
+        let tag;
+        if(isEdit){
+            tag = this.state.taskTags.find(t=>t.id===id);
+            if(!tag) return;
+            tag.name = name;
+            tag.color = color;
+            await this.db.taskTags.put(tag);
+        }else{
+            tag = {id:this.generateId(), name, color};
+            this.state.taskTags.push(tag);
+            await this.db.taskTags.add(tag);
+        }
+        this.closeModal(document.getElementById('edit-tag-modal'));
+        this.renderTaskTags();
+        this.renderManageTaskTags();
+    };
+
+    app.handleTaskFormSubmit = async function(formEl, isEdit){
+        const prefix = isEdit ? 'edit-' : '';
+        const id = isEdit ? document.getElementById('edit-task-id').value : this.generateId();
+        const title = formEl.querySelector('#'+prefix+'task-title').value.trim();
+        if(!title) return;
+        const description = formEl.querySelector('#'+prefix+'task-description').value.trim();
+        const projectId = formEl.querySelector('#'+prefix+'task-project').value || null;
+        const tagsInput = formEl.querySelector('#'+prefix+'task-tags').value.trim();
+        const deadline = formEl.querySelector('#'+prefix+'task-deadline-date').value || null;
+        const importance = formEl.querySelector('input[name="'+(isEdit?'edit-importance':'importance')+'"]:checked').value;
+        const status = formEl.querySelector('input[name="'+(isEdit?'edit-status':'status')+'"]:checked').value;
+
+        const tagNames = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const tagIds = [];
+        for(const name of tagNames){
+            let tg = this.state.taskTags.find(t => t.name.toLowerCase() === name.toLowerCase());
+            if(!tg){
+                tg = {id:this.generateId(), name, color:'#'+Math.floor(Math.random()*16777215).toString(16)};
+                this.state.taskTags.push(tg);
+                await this.db.taskTags.add(tg);
+            }
+            tagIds.push(tg.id);
+        }
+
+        if(isEdit){
+            const task = this.state.tasks.find(t => t.id === id);
+            if(!task) return;
+            Object.assign(task, {title, description, projectId, tags: tagIds, deadline, importance, status});
+            await this.db.tasks.put(task);
+            this.showToast('Task updated!', 'success');
+        }else{
+            const newTask = {id, title, description, projectId, tags: tagIds, deadline, importance, status, completed:false, createdAt:new Date().toISOString(), isTaskOfTheDay:false};
+            this.state.tasks.push(newTask);
+            await this.db.tasks.add(newTask);
+            this.showToast('Task added!', 'success');
+        }
+
+        formEl.reset();
+        this.closeModal(isEdit ? document.getElementById('edit-task-modal') : document.getElementById('add-task-modal'));
+        this.renderTaskTags();
+        this.renderManageTaskTags();
+        this.renderTasks();
+    };
+
+    app.openEditTaskModal = function(taskId){
+        const task = this.state.tasks.find(t=>t.id===taskId);
+        if(!task) return;
+        this.populateProjectOptions(document.getElementById('edit-task-project'));
+        document.getElementById('edit-task-id').value = task.id;
+        document.getElementById('edit-task-title').value = task.title;
+        document.getElementById('edit-task-description').value = task.description || '';
+        document.getElementById('edit-task-project').value = task.projectId || '';
+        document.getElementById('edit-task-tags').value = (task.tags || []).map(id=>{const tg=this.state.taskTags.find(t=>t.id===id);return tg?tg.name:'';}).filter(Boolean).join(', ');
+        document.getElementById('edit-task-deadline-date').value = task.deadline ? task.deadline.slice(0,10) : '';
+        document.querySelector(`input[name="edit-importance"][value="${task.importance||'normal'}"]`).checked = true;
+        document.querySelector(`input[name="edit-status"][value="${task.status}"]`).checked = true;
+        this.openModal(document.getElementById('edit-task-modal'));
+    };
+
+    app.deleteTask = async function(taskId, closeModal){
+        const idx = this.state.tasks.findIndex(t=>t.id===taskId);
+        if(idx === -1) return;
+        this.state.tasks.splice(idx,1);
+        await this.db.tasks.delete(taskId);
+        if(closeModal) this.closeModal(document.getElementById('edit-task-modal'));
+        this.renderTasks();
+        this.renderTaskTags();
+        this.renderManageTaskTags();
+        this.showToast('Task deleted', 'success');
+    };
+
+    app.toggleTaskCompletion = async function(taskId){
+        const task = this.state.tasks.find(t=>t.id===taskId);
+        if(!task) return;
+        task.completed = !task.completed;
+        await this.db.tasks.put(task);
+        this.renderTasks();
+    };
+
+    app.addQuickTask = async function(text){
+        const qt = {id:this.generateId(), title:text, createdAt:new Date().toISOString()};
+        this.state.quickTasks.push(qt);
+        await this.db.quickTasks.add(qt);
+        document.getElementById('quick-task-input').value = '';
+        this.renderQuickTasks();
+    };
+
+    app.deleteQuickTask = async function(id){
+        const idx = this.state.quickTasks.findIndex(q=>q.id===id);
+        if(idx===-1) return;
+        const [qt] = this.state.quickTasks.splice(idx,1);
+        await this.db.quickTasks.delete(qt.id);
+        this.renderQuickTasks();
+    };
+
+    app.processQuickTask = async function(id){
+        const qt = this.state.quickTasks.find(q=>q.id===id);
+        if(!qt) return;
+        const newTask = {id:this.generateId(), title:qt.title, description:'', projectId:null, tags:[], deadline:null, importance:'normal', status:'active', completed:false, createdAt:new Date().toISOString(), isTaskOfTheDay:false};
+        this.state.tasks.push(newTask);
+        await this.db.tasks.add(newTask);
+        await this.deleteQuickTask(id);
+        this.showToast('Quick task processed!', 'success');
+        this.renderTasks();
+    };
+
+    app.renderQuickTasks = function(){
+        const list = document.getElementById('quick-tasks-list');
+        if(!list) return;
+        list.innerHTML = '';
+        if(this.state.quickTasks.length === 0){
+            list.innerHTML = `<div class="empty-state"><p>No quick tasks</p></div>`;
+            return;
+        }
+        this.state.quickTasks.forEach(q => {
+            const item = document.createElement('div');
+            item.className = 'quick-task-item';
+            item.innerHTML = `<span>${q.title}</span><div class="quick-task-actions"><button class="quick-task-action-btn process-btn"><i class="fas fa-arrow-right"></i></button><button class="quick-task-action-btn delete-btn"><i class="fas fa-trash"></i></button></div>`;
+            item.querySelector('.process-btn').addEventListener('click', () => this.processQuickTask(q.id));
+            item.querySelector('.delete-btn').addEventListener('click', () => this.deleteQuickTask(q.id));
+            list.appendChild(item);
+        });
+    };
+
+    app.clearCompletedTasks = async function(){
+        const completed = this.state.tasks.filter(t=>t.completed);
+        for(const t of completed){
+            await this.db.tasks.delete(t.id);
+        }
+        this.state.tasks = this.state.tasks.filter(t=>!t.completed);
         this.renderTasks();
     };
     
